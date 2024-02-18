@@ -42,6 +42,7 @@ func (w *LoggingResponseWriter) WriteHeader(statusCode int) {
 
 func LoggingMiddleware(skipPaths ...[]string) func(next http.Handler) http.Handler {
 	skip := make(map[string]struct{}, 0)
+
 	if len(skipPaths) > 0 {
 		for _, path := range skipPaths[0] {
 			skip[path] = struct{}{}
@@ -72,6 +73,7 @@ func LoggingMiddleware(skipPaths ...[]string) func(next http.Handler) http.Handl
 				"http_user_agent", r.UserAgent(),
 			)
 		}
+
 		return http.HandlerFunc(fn)
 	}
 }

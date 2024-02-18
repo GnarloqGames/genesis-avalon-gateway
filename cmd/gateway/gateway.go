@@ -17,9 +17,7 @@ import (
 )
 
 var (
-	cfgFile  string
-	logLevel string
-	logKind  string
+	cfgFile string
 )
 
 const (
@@ -113,10 +111,12 @@ func initMessageBus(cmd *cobra.Command) (*transport.Connection, error) {
 	if err != nil {
 		natsAddress = defaultNatsAddress
 	}
+
 	natsEncoder, err := cmd.Flags().GetString("nats-encoder")
 	if err != nil {
 		natsEncoder = defaultNatsEncoder
 	}
+
 	encoder := transport.ParseEncoder(natsEncoder)
 	config := transport.DefaultConfig
 	config.URL = natsAddress

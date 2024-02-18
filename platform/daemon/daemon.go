@@ -27,6 +27,7 @@ func Start(bus *transport.Connection) *Server {
 
 	go func() {
 		slog.Info("starting daemon", "address", address, "port", port)
+
 		if err := server.ListenAndServe(); err != http.ErrServerClosed {
 			log.Fatalf("error: %v", err)
 		}

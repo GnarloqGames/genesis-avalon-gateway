@@ -1,3 +1,5 @@
+github.com/GnarloqGames/genesis-avalon-kit v0.3.0 h1:UD53RdYAFpj5U00UqFKERUd88NjjuzYsSbdsSjJ0A/Y=
+github.com/GnarloqGames/genesis-avalon-kit v0.3.0/go.mod h1:aCnXtFRsKnYw0jgWVeNkDgHBQG7I5EtRH8AqECRLeEQ=
 github.com/cpuguy83/go-md2man/v2 v2.0.3/go.mod h1:tgQtvFlXSQOSOSIRvRPT7W67SCa46tRHOmNcaadrF8o=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

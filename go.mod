@@ -3,7 +3,7 @@ module github.com/GnarloqGames/genesis-avalon-gateway
 go 1.21.0
 
 require (
-	github.com/GnarloqGames/genesis-avalon-kit v0.2.0
+	github.com/GnarloqGames/genesis-avalon-kit v0.3.0
 	github.com/go-chi/chi/v5 v5.0.11
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.18.2
@@ -41,5 +41,3 @@ require (
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/GnarloqGames/genesis-avalon-kit => ../genesis-avalon-kit

@@ -20,5 +20,6 @@ func Init() error {
 	}
 
 	slog.SetDefault(l)
+
 	return nil
 }

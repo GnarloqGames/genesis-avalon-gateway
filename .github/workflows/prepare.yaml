@@ -1,7 +1,6 @@
 name: Prepare
 
 on:
-  push:
   pull_request:
 
 jobs:

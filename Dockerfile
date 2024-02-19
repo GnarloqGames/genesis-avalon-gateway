@@ -1,4 +1,4 @@
-FROM registry.0x42.in/library/docker/genesis-avalon-builder:bookworm-1.1.0 as builder
+FROM registry.0x42.in/library/docker/genesis-avalon-builder:bookworm-0.2.5 as builder
 
 WORKDIR /build
 COPY . .

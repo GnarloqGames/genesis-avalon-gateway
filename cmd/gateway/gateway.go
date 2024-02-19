@@ -18,6 +18,8 @@ import (
 
 var (
 	cfgFile string
+	host    string
+	port    uint16
 )
 
 const (
@@ -43,6 +45,8 @@ var startCmd = &cobra.Command{
 		}
 		defer bus.Close()
 
+		daemon.SetAddress(host)
+		daemon.SetPort(port)
 		s := daemon.Start(bus)
 
 		<-stopChan
@@ -69,8 +73,8 @@ func main() {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	startCmd.Flags().String("host", "127.0.0.1", "host to bind listener to")
-	startCmd.Flags().Uint16("port", uint16(8080), "port to bind listener to")
+	startCmd.Flags().StringVar(&host, "host", "127.0.0.1", "host to bind listener to")
+	startCmd.Flags().Uint16Var(&port, "port", uint16(8080), "port to bind listener to")
 	startCmd.Flags().String("nats-address", "127.0.0.1:4222", "NATS address")
 	startCmd.Flags().String("nats-encoding", "json", "NATS encoding")
 

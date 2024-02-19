@@ -1,6 +1,6 @@
 # This is an example .goreleaser.yml file with some sensible defaults.
 # Make sure to check the documentation at https://goreleaser.com
-project_name: "gatewayd"
+project_name: "genesis-avalon-gateway"
 before:
   hooks:
     # You may remove this if you don't use go modules.
@@ -69,7 +69,11 @@ dockers:
       - "--label=org.opencontainers.image.title={{.ProjectName}}"
       - "--label=org.opencontainers.image.revision={{.FullCommit}}"
       - "--label=org.opencontainers.image.version={{.Version}}"
-
+announce:
+  mastodon:
+    enabled: true
+    server: https://social.0xa1.red
+    message_template: 'New {{.ProjectName}} release: {{.Tag}} - https://github.com/GnarloqGames/{{.ProjectName}}'
 
 # The lines beneath this are called `modelines`. See `:help modeline`
 # Feel free to remove those if you don't want/use them.

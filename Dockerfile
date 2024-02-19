@@ -2,6 +2,9 @@ FROM registry.0x42.in/library/docker/genesis-avalon-builder:bookworm-0.2.5 as bu
 
 WORKDIR /build
 COPY . .
+
+RUN ls -la
+
 RUN go build -o ./bin/gatewayd ./cmd/gateway/...
 
 FROM debian:bookworm

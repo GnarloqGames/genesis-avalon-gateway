@@ -1,0 +1,2 @@
+FROM debian:bookworm
+COPY ./gatewayd /usr/bin/gatewayd

@@ -1,3 +1,6 @@
 FROM debian:bookworm
+
+RUN apt-get update && apt-get install -y ca-certificates
+
 COPY ./genesis-avalon-gateway /usr/bin/gatewayd
 ENTRYPOINT ["/usr/bin/gatewayd"]

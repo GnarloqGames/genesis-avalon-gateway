@@ -16,6 +16,14 @@ builds:
     goarch:
       - amd64
     main: ./cmd/gateway
+  - id: linux-arm64
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - arm64
+    main: ./cmd/gateway
   - id: darwin-arm64
     env:
       - CGO_ENABLED=0
@@ -52,23 +60,30 @@ dockers:
     goarch: amd64
     dockerfile: Dockerfile-goreleaser
     image_templates:
-      - "registry.0x42.in/library/docker/genesis-avalon-gateway:{{ .Tag }}"
+      - "registry.0x42.in/library/docker/genesis-avalon-gateway:{{ .Tag }}-amd64"
     build_flag_templates:
       - "--label=org.opencontainers.image.created={{.Date}}"
       - "--label=org.opencontainers.image.title={{.ProjectName}}"
       - "--label=org.opencontainers.image.revision={{.FullCommit}}"
       - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--platform=linux/amd64"
   -
-    goos: darwin
+    goos: linux
     goarch: arm64
     dockerfile: Dockerfile-goreleaser
     image_templates:
-      - "registry.0x42.in/library/docker/genesis-avalon-gateway:{{ .Tag }}"
+      - "registry.0x42.in/library/docker/genesis-avalon-gateway:{{ .Tag }}-arm64"
     build_flag_templates:
       - "--label=org.opencontainers.image.created={{.Date}}"
       - "--label=org.opencontainers.image.title={{.ProjectName}}"
       - "--label=org.opencontainers.image.revision={{.FullCommit}}"
       - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--platform=linux/arm64"
+docker_manifests:
+  - name_template: 'registry.0x42.in/library/docker/genesis-avalon-gateway:{{ .Tag }}'
+    image_templates:
+    - 'registry.0x42.in/library/docker/genesis-avalon-gateway:{{ .Tag }}-amd64'
+    - 'registry.0x42.in/library/docker/genesis-avalon-gateway:{{ .Tag }}-arm64'
 announce:
   mastodon:
     enabled: true

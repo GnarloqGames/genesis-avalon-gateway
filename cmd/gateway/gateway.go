@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/GnarloqGames/genesis-avalon-gateway/logging"
+	"github.com/GnarloqGames/genesis-avalon-gateway/platform/auth"
 	"github.com/GnarloqGames/genesis-avalon-gateway/platform/daemon"
 	"github.com/GnarloqGames/genesis-avalon-kit/transport"
 	"github.com/spf13/cobra"
@@ -38,6 +39,10 @@ var startCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		stopChan := make(chan os.Signal, 1)
 		signal.Notify(stopChan, os.Interrupt, syscall.SIGTERM)
+
+		if err := auth.InitProvider(); err != nil {
+			return err
+		}
 
 		bus, err := initMessageBus(cmd)
 		if err != nil {
@@ -80,7 +85,29 @@ func init() {
 
 	rootCmd.PersistentFlags().String("log-level", "info", "log level (default is info)")
 	rootCmd.PersistentFlags().String("log-kind", "text", "log kind (text or json, default is text)")
+	rootCmd.PersistentFlags().String("oidc-provider", "", "OIDC provider URL")
+	rootCmd.PersistentFlags().String("oidc-client-id", "", "OIDC client ID")
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is /etc/gatewayd/config.yaml)")
+
+	envPrefix := "AVALOND"
+	bindFlags := map[string]string{
+		"log-level":      "LOG_LEVEL",
+		"log-kind":       "LOG_KIND",
+		"oidc-provider":  "OIDC_PROVIDER",
+		"oidc-client-id": "OIDC_CLIENT_ID",
+	}
+
+	for flag, env := range bindFlags {
+		if err := viper.BindPFlag(flag, rootCmd.PersistentFlags().Lookup(flag)); err != nil {
+			slog.Warn("failed to bind flag", "error", err, "name", flag)
+		}
+
+		env = fmt.Sprintf("%s_%s", envPrefix, env)
+		if err := viper.BindEnv(flag, env); err != nil {
+			slog.Warn("failed to bind env", "error", err, "flag", flag, "env", env)
+		}
+	}
+
 	viper.SetDefault("log-level", "info")
 	viper.SetDefault("log-kind", "text")
 	viper.SetDefault("author", "Alfred Dobradi <alfreddobradi@gmail.com>")
@@ -98,8 +125,6 @@ func initConfig() {
 		viper.SetConfigType("yaml")
 		viper.SetConfigName("config")
 	}
-
-	viper.AutomaticEnv()
 
 	if err := viper.ReadInConfig(); err == nil {
 		slog.Info("loaded config file", "file", viper.ConfigFileUsed())

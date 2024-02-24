@@ -16,6 +16,14 @@ builds:
     goarch:
       - amd64
     main: ./cmd/gateway
+  - id: linux-arm64
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - arm64
+    main: ./cmd/gateway
   - id: darwin-arm64
     env:
       - CGO_ENABLED=0
@@ -60,7 +68,7 @@ dockers:
       - "--label=org.opencontainers.image.version={{.Version}}"
       - "--platform=linux/amd64"
   -
-    goos: darwin
+    goos: linux
     goarch: arm64
     dockerfile: Dockerfile-goreleaser
     image_templates:

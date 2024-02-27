@@ -116,12 +116,12 @@ func ListBuildings() http.HandlerFunc {
 	return http.HandlerFunc(fn)
 }
 
-func getClaims(w http.ResponseWriter, r *http.Request) *auth.Claims {
-	claims, ok := r.Context().Value(auth.ClaimsContext).(*auth.Claims)
-	if !ok || claims == nil {
-		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-		return nil
-	}
+// func getClaims(w http.ResponseWriter, r *http.Request) *auth.Claims {
+// 	claims, ok := r.Context().Value(auth.ClaimsContext).(*auth.Claims)
+// 	if !ok || claims == nil {
+// 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+// 		return nil
+// 	}
 
-	return claims
-}
+// 	return claims
+// }

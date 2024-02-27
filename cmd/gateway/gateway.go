@@ -13,6 +13,7 @@ import (
 	"github.com/GnarloqGames/genesis-avalon-gateway/logging"
 	"github.com/GnarloqGames/genesis-avalon-gateway/platform/auth"
 	"github.com/GnarloqGames/genesis-avalon-gateway/platform/daemon"
+	"github.com/GnarloqGames/genesis-avalon-kit/database/couchbase"
 	"github.com/GnarloqGames/genesis-avalon-kit/transport"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -50,6 +51,11 @@ var startCmd = &cobra.Command{
 			return err
 		}
 		defer bus.Close()
+
+		// Try connecting to Couchbase to catch issues at runtime
+		if _, err := couchbase.Get(); err != nil {
+			return err
+		}
 
 		daemon.SetAddress(host)
 		daemon.SetPort(port)

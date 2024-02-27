@@ -1,4 +1,4 @@
-package handler
+package middleware
 
 import (
 	"log/slog"
@@ -40,7 +40,7 @@ func (w *LoggingResponseWriter) WriteHeader(statusCode int) {
 	w.ResponseWriter.WriteHeader(statusCode)
 }
 
-func LoggingMiddleware(skipPaths ...[]string) func(next http.Handler) http.Handler {
+func Logging(skipPaths ...[]string) func(next http.Handler) http.Handler {
 	skip := make(map[string]struct{}, 0)
 
 	if len(skipPaths) > 0 {

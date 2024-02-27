@@ -9,9 +9,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/GnarloqGames/genesis-avalon-gateway/config"
 	"github.com/GnarloqGames/genesis-avalon-gateway/logging"
 	"github.com/GnarloqGames/genesis-avalon-gateway/platform/auth"
 	"github.com/GnarloqGames/genesis-avalon-gateway/platform/daemon"
+	"github.com/GnarloqGames/genesis-avalon-kit/database/couchbase"
 	"github.com/GnarloqGames/genesis-avalon-kit/transport"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -50,6 +52,11 @@ var startCmd = &cobra.Command{
 		}
 		defer bus.Close()
 
+		// Try connecting to Couchbase to catch issues at runtime
+		if _, err := couchbase.Get(); err != nil {
+			return err
+		}
+
 		daemon.SetAddress(host)
 		daemon.SetPort(port)
 		s := daemon.Start(bus)
@@ -80,21 +87,33 @@ func init() {
 
 	startCmd.Flags().StringVar(&host, "host", "127.0.0.1", "host to bind listener to")
 	startCmd.Flags().Uint16Var(&port, "port", uint16(8080), "port to bind listener to")
-	startCmd.Flags().String("nats-address", "127.0.0.1:4222", "NATS address")
-	startCmd.Flags().String("nats-encoding", "json", "NATS encoding")
 
-	rootCmd.PersistentFlags().String("log-level", "info", "log level (default is info)")
-	rootCmd.PersistentFlags().String("log-kind", "text", "log kind (text or json, default is text)")
-	rootCmd.PersistentFlags().String("oidc-provider", "", "OIDC provider URL")
-	rootCmd.PersistentFlags().String("oidc-client-id", "", "OIDC client ID")
+	rootCmd.PersistentFlags().String(config.FlagNatsAddress, "127.0.0.1:4222", "NATS address")
+	rootCmd.PersistentFlags().String(config.FlagNatsEncoding, "json", "NATS encoding")
+	rootCmd.PersistentFlags().String(config.FlagEnvironment, "development", "environment")
+	rootCmd.PersistentFlags().String(config.FlagLogLevel, "info", "log level (default is info)")
+	rootCmd.PersistentFlags().String(config.FlagLogKind, "text", "log kind (text or json, default is text)")
+	rootCmd.PersistentFlags().String(config.FlagOidcProvider, "", "OIDC provider URL")
+	rootCmd.PersistentFlags().String(config.FlagOidcClientId, "", "OIDC client ID")
+	rootCmd.PersistentFlags().String(config.FlagCouchbaseURL, "127.0.0.1", "Couchbase host")
+	rootCmd.PersistentFlags().String(config.FlagCouchbaseBucket, "default", "Couchbase bucket")
+	rootCmd.PersistentFlags().String(config.FlagCouchbaseUsername, "", "Couchbase username")
+	rootCmd.PersistentFlags().String(config.FlagCouchbasePassword, "", "Couchbase password")
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is /etc/gatewayd/config.yaml)")
 
 	envPrefix := "AVALOND"
 	bindFlags := map[string]string{
-		"log-level":      "LOG_LEVEL",
-		"log-kind":       "LOG_KIND",
-		"oidc-provider":  "OIDC_PROVIDER",
-		"oidc-client-id": "OIDC_CLIENT_ID",
+		config.FlagEnvironment:       config.EnvEnvironment,
+		config.FlagLogLevel:          config.EnvLogLevel,
+		config.FlagLogKind:           config.EnvLogKind,
+		config.FlagNatsAddress:       config.EnvNatsAddress,
+		config.FlagNatsEncoding:      config.EnvNatsEncoding,
+		config.FlagOidcProvider:      config.EnvOidcProvider,
+		config.FlagOidcClientId:      config.EnvOidcClientId,
+		config.FlagCouchbaseURL:      config.EnvCouchbaseURL,
+		config.FlagCouchbaseBucket:   config.EnvCouchbaseBucket,
+		config.FlagCouchbaseUsername: config.EnvCouchbaseUsername,
+		config.FlagCouchbasePassword: config.EnvCouchbasePassword,
 	}
 
 	for flag, env := range bindFlags {
@@ -133,6 +152,8 @@ func initConfig() {
 	if err := logging.Init(); err != nil {
 		slog.Error("failed to create logger", "error", err.Error())
 	}
+
+	setConfigs()
 }
 
 func initMessageBus(cmd *cobra.Command) (*transport.Connection, error) {

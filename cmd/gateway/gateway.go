@@ -43,18 +43,18 @@ var startCmd = &cobra.Command{
 		signal.Notify(stopChan, os.Interrupt, syscall.SIGTERM)
 
 		if err := auth.InitProvider(); err != nil {
-			return err
+			return fmt.Errorf("oidc: %w", err)
 		}
 
-		bus, err := initMessageBus(cmd)
+		bus, err := initMessageBus()
 		if err != nil {
-			return err
+			return fmt.Errorf("message bus: %w", err)
 		}
 		defer bus.Close()
 
 		// Try connecting to Couchbase to catch issues at runtime
 		if _, err := couchbase.Get(); err != nil {
-			return err
+			return fmt.Errorf("couchbase: %w", err)
 		}
 
 		daemon.SetAddress(host)
@@ -156,14 +156,14 @@ func initConfig() {
 	setConfigs()
 }
 
-func initMessageBus(cmd *cobra.Command) (*transport.Connection, error) {
-	natsAddress, err := cmd.Flags().GetString("nats-address")
-	if err != nil {
+func initMessageBus() (*transport.Connection, error) {
+	natsAddress := viper.GetString(config.FlagNatsAddress)
+	if natsAddress == "" {
 		natsAddress = defaultNatsAddress
 	}
 
-	natsEncoder, err := cmd.Flags().GetString("nats-encoder")
-	if err != nil {
+	natsEncoder := viper.GetString(config.FlagNatsEncoding)
+	if natsEncoder == "" {
 		natsEncoder = defaultNatsEncoder
 	}
 

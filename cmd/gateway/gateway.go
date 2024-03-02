@@ -46,7 +46,7 @@ var startCmd = &cobra.Command{
 			return fmt.Errorf("oidc: %w", err)
 		}
 
-		bus, err := initMessageBus(cmd)
+		bus, err := initMessageBus()
 		if err != nil {
 			return fmt.Errorf("message bus: %w", err)
 		}
@@ -156,14 +156,14 @@ func initConfig() {
 	setConfigs()
 }
 
-func initMessageBus(cmd *cobra.Command) (*transport.Connection, error) {
-	natsAddress, err := cmd.Flags().GetString("nats-address")
-	if err != nil {
+func initMessageBus() (*transport.Connection, error) {
+	natsAddress := viper.GetString(config.FlagNatsAddress)
+	if natsAddress == "" {
 		natsAddress = defaultNatsAddress
 	}
 
-	natsEncoder, err := cmd.Flags().GetString("nats-encoder")
-	if err != nil {
+	natsEncoder := viper.GetString(config.FlagNatsEncoding)
+	if natsEncoder == "" {
 		natsEncoder = defaultNatsEncoder
 	}
 

@@ -43,18 +43,18 @@ var startCmd = &cobra.Command{
 		signal.Notify(stopChan, os.Interrupt, syscall.SIGTERM)
 
 		if err := auth.InitProvider(); err != nil {
-			return err
+			return fmt.Errorf("oidc: %w", err)
 		}
 
 		bus, err := initMessageBus(cmd)
 		if err != nil {
-			return err
+			return fmt.Errorf("message bus: %w", err)
 		}
 		defer bus.Close()
 
 		// Try connecting to Couchbase to catch issues at runtime
 		if _, err := couchbase.Get(); err != nil {
-			return err
+			return fmt.Errorf("couchbase: %w", err)
 		}
 
 		daemon.SetAddress(host)

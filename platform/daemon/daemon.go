@@ -7,8 +7,10 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/GnarloqGames/genesis-avalon-gateway/config"
 	"github.com/GnarloqGames/genesis-avalon-gateway/platform/daemon/handler"
 	"github.com/GnarloqGames/genesis-avalon-kit/transport"
+	"github.com/spf13/viper"
 )
 
 type Server struct {
@@ -18,15 +20,18 @@ type Server struct {
 }
 
 func Start(bus *transport.Connection) *Server {
+	host := viper.GetString(config.FlagGatewayHost)
+	port := viper.GetUint16(config.FlagGatewayPort)
+
 	server := &http.Server{
-		Addr:         fmt.Sprintf("%s:%d", address, port),
+		Addr:         fmt.Sprintf("%s:%d", host, port),
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		Handler:      handler.Handler(bus),
 	}
 
 	go func() {
-		slog.Info("starting daemon", "address", address, "port", port)
+		slog.Info("starting daemon", "address", host, "port", port)
 
 		if err := server.ListenAndServe(); err != http.ErrServerClosed {
 			log.Fatalf("error: %v", err)

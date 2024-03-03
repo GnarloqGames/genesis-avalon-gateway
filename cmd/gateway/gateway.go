@@ -21,8 +21,6 @@ import (
 
 var (
 	cfgFile string
-	host    string
-	port    uint16
 )
 
 const (
@@ -57,8 +55,6 @@ var startCmd = &cobra.Command{
 			return fmt.Errorf("couchbase: %w", err)
 		}
 
-		daemon.SetAddress(host)
-		daemon.SetPort(port)
 		s := daemon.Start(bus)
 
 		<-stopChan
@@ -85,9 +81,8 @@ func main() {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	startCmd.Flags().StringVar(&host, "host", "127.0.0.1", "host to bind listener to")
-	startCmd.Flags().Uint16Var(&port, "port", uint16(8080), "port to bind listener to")
-
+	rootCmd.PersistentFlags().String("host", "127.0.0.1", "host to bind listener to")
+	rootCmd.PersistentFlags().Uint16("port", uint16(8080), "port to bind listener to")
 	rootCmd.PersistentFlags().String(config.FlagNatsAddress, "127.0.0.1:4222", "NATS address")
 	rootCmd.PersistentFlags().String(config.FlagNatsEncoding, "json", "NATS encoding")
 	rootCmd.PersistentFlags().String(config.FlagEnvironment, "development", "environment")
@@ -106,6 +101,8 @@ func init() {
 		config.FlagEnvironment:       config.EnvEnvironment,
 		config.FlagLogLevel:          config.EnvLogLevel,
 		config.FlagLogKind:           config.EnvLogKind,
+		config.FlagGatewayHost:       config.EnvGatewayHost,
+		config.FlagGatewayPort:       config.EnvGatewayPort,
 		config.FlagNatsAddress:       config.EnvNatsAddress,
 		config.FlagNatsEncoding:      config.EnvNatsEncoding,
 		config.FlagOidcProvider:      config.EnvOidcProvider,

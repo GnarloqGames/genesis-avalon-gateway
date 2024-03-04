@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -39,23 +40,30 @@ func Handler(bus *transport.Connection) http.Handler {
 }
 
 func Build(bus *transport.Connection) http.HandlerFunc {
+	logger := slog.Default().With("context", "Build")
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		claims, ok := r.Context().Value(auth.ClaimsContext).(*auth.Claims)
 		if !ok || claims == nil {
+			logger.Error("failed to read claims from context")
 			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+
 			return
 		}
 
 		if !claims.HasRole("dev.avalon.cool:can-build") {
+			logger.Error("user doesn't have correct permissions", "role", "dev.avalon.cool:can-build", "user_id", claims.Subject)
 			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+
 			return
 		}
 
-		context, err := structpb.NewStruct(map[string]any{
-			"owner": claims.Subject,
-		})
+		src := map[string]any{"owner": claims.Subject}
+		context, err := structpb.NewStruct(src)
+
 		if err != nil {
+			logger.Error("failed to create new protobuf struct", "error", err, "source", src)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+
 			return
 		}
 
@@ -71,7 +79,16 @@ func Build(bus *transport.Connection) http.HandlerFunc {
 
 		var res proto.BuildResponse
 		if err := bus.Request("build", req, &res, 10*time.Second); err != nil {
+			logger.Error("failed to send request to message bus", "error", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+
+			return
+		}
+
+		if res.Header.Status == proto.Status_ERROR {
+			logger.Error("received error in response", "error", res.Header.Error)
+			http.Error(w, res.Header.Error, http.StatusInternalServerError)
+
 			return
 		}
 
@@ -82,22 +99,29 @@ func Build(bus *transport.Connection) http.HandlerFunc {
 }
 
 func ListBuildings() http.HandlerFunc {
+	logger := slog.Default().With("context", "ListBuildings")
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		claims, ok := r.Context().Value(auth.ClaimsContext).(*auth.Claims)
 		if !ok || claims == nil {
+			logger.Error("failed to read claims from context")
 			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+
 			return
 		}
 
 		db, err := couchbase.Get()
 		if err != nil {
+			logger.Error("failed to get database connection", "error", err)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+
 			return
 		}
 
 		buildings, err := db.GetBuildings(claims.Subject)
 		if err != nil {
+			logger.Error("failed to fetch buildings", "error", err)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+
 			return
 		}
 
@@ -108,7 +132,9 @@ func ListBuildings() http.HandlerFunc {
 
 		encoder := json.NewEncoder(w)
 		if err := encoder.Encode(response); err != nil {
+			logger.Error("failed to encode response", "error", err)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+
 			return
 		}
 	}

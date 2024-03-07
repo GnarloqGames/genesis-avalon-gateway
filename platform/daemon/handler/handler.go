@@ -13,11 +13,23 @@ import (
 	"github.com/GnarloqGames/genesis-avalon-kit/transport"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/metric"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func Handler(bus *transport.Connection) http.Handler {
+	counter, err := otel.Meter("gateway").Int64UpDownCounter(
+		"http_request",
+		metric.WithDescription("Number of requests per path"),
+		metric.WithUnit("{request}"),
+	)
+	if err != nil {
+		slog.Error("failed to create counter", "error", err)
+	}
+
 	r := chi.NewRouter()
 
 	r.Use(cors.Handler(cors.Options{
@@ -30,11 +42,16 @@ func Handler(bus *transport.Connection) http.Handler {
 		AllowCredentials: false,
 		MaxAge:           300, // Maximum value not ignored by any of major browsers
 	}))
-	r.Use(middleware.Logging())
-	r.Use(auth.Middleware())
+	r.Use(middleware.Logging([]string{"/metrics"}))
+	r.Use(middleware.Metrics(counter, []string{"/metrics"}))
 
-	r.Post("/build", Build(bus))
-	r.Get("/buildings", ListBuildings())
+	r.Handle("/metrics", promhttp.Handler())
+
+	r.Group(func(rr chi.Router) {
+		rr.Use(auth.Middleware())
+		rr.Post("/build", Build(bus))
+		rr.Get("/buildings", ListBuildings())
+	})
 
 	return r
 }

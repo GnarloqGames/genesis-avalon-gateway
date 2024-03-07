@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
@@ -21,13 +22,9 @@ import (
 )
 
 func Handler(bus *transport.Connection) http.Handler {
-	counter, err := otel.Meter("gateway").Int64UpDownCounter(
-		"http_request",
-		metric.WithDescription("Number of requests per path"),
-		metric.WithUnit("{request}"),
-	)
+	meters, err := newMeters()
 	if err != nil {
-		slog.Error("failed to create counter", "error", err)
+		slog.Error("failed to create meters", "error", err)
 	}
 
 	r := chi.NewRouter()
@@ -42,8 +39,8 @@ func Handler(bus *transport.Connection) http.Handler {
 		AllowCredentials: false,
 		MaxAge:           300, // Maximum value not ignored by any of major browsers
 	}))
-	r.Use(middleware.Logging([]string{"/metrics"}))
-	r.Use(middleware.Metrics(counter, []string{"/metrics"}))
+	r.Use(middleware.Logging([]string{"/favicon.ico", "/metrics"}))
+	r.Use(middleware.Metrics(meters, []string{"/favicon.ico", "/metrics"}))
 
 	r.Handle("/metrics", promhttp.Handler())
 
@@ -168,3 +165,30 @@ func ListBuildings() http.HandlerFunc {
 
 // 	return claims
 // }
+
+func newMeters() (middleware.Meters, error) {
+	meter := otel.Meter("gateway")
+
+	reqCounter, err := meter.Int64UpDownCounter(
+		"http.request.num",
+		metric.WithDescription("Number of requests per path"),
+		metric.WithUnit("{request}"),
+	)
+	if err != nil {
+		return middleware.Meters{}, fmt.Errorf("failed to create request counter: %w", err)
+	}
+
+	reqLength, err := meter.Float64Histogram(
+		"http.request.length",
+		metric.WithDescription("Request length"),
+		metric.WithUnit("ms"),
+	)
+	if err != nil {
+		return middleware.Meters{}, fmt.Errorf("failed to create request length histogram: %w", err)
+	}
+
+	return middleware.Meters{
+		RequestCounter: reqCounter,
+		RequestLength:  reqLength,
+	}, nil
+}

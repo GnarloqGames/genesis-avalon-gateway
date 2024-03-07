@@ -1,44 +1,38 @@
 package middleware
 
 import (
+	"context"
 	"net/http"
+	"time"
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 )
 
-type MetricsResponseWriter struct {
-	http.ResponseWriter
-
-	Status int
-	Size   int
+type Meters struct {
+	RequestCounter metric.Int64UpDownCounter
+	RequestLength  metric.Float64Histogram
 }
 
-func NewMetricsResponseWriter(w http.ResponseWriter) *MetricsResponseWriter {
-	return &MetricsResponseWriter{
-		ResponseWriter: w,
+func (m Meters) RecordRequest(ctx context.Context, path, method string, status int, measure time.Duration) {
+	if m.RequestCounter != nil {
+		m.RequestCounter.Add(ctx, 1,
+			metric.WithAttributes(attribute.String("path", path)),
+			metric.WithAttributes(attribute.String("method", method)),
+			metric.WithAttributes(attribute.Int("status", status)),
+		)
+	}
 
-		Status: 200,
+	if m.RequestLength != nil {
+		m.RequestLength.Record(ctx, float64(measure.Milliseconds()),
+			metric.WithAttributes(attribute.String("path", path)),
+			metric.WithAttributes(attribute.String("method", method)),
+			metric.WithAttributes(attribute.Int("status", status)),
+		)
 	}
 }
 
-func (w *MetricsResponseWriter) Write(d []byte) (int, error) {
-	n, err := w.ResponseWriter.Write(d)
-
-	return n, err
-}
-
-func (w *MetricsResponseWriter) Header() http.Header {
-	return w.ResponseWriter.Header()
-}
-
-func (w *MetricsResponseWriter) WriteHeader(statusCode int) {
-	w.Status = statusCode
-
-	w.ResponseWriter.WriteHeader(statusCode)
-}
-
-func Metrics(meter metric.Int64UpDownCounter, skipPaths ...[]string) func(next http.Handler) http.Handler {
+func Metrics(meter Meters, skipPaths ...[]string) func(next http.Handler) http.Handler {
 	skip := make(map[string]struct{}, 0)
 
 	if len(skipPaths) > 0 {
@@ -55,13 +49,13 @@ func Metrics(meter metric.Int64UpDownCounter, skipPaths ...[]string) func(next h
 					return
 				}
 
-				mrw := NewMetricsResponseWriter(w)
+				mrw := NewResponseWriter(w)
+				start := time.Now()
+
 				next.ServeHTTP(mrw, r)
-				meter.Add(r.Context(), 1,
-					metric.WithAttributes(attribute.String("path", r.URL.Path)),
-					metric.WithAttributes(attribute.String("method", r.Method)),
-					metric.WithAttributes(attribute.Int("status", mrw.Status)),
-				)
+
+				measure := time.Since(start)
+				meter.RecordRequest(r.Context(), r.URL.Path, r.Method, mrw.Status, measure)
 			}
 		}
 

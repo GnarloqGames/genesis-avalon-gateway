@@ -6,40 +6,6 @@ import (
 	"time"
 )
 
-type LoggingResponseWriter struct {
-	http.ResponseWriter
-
-	Status int
-	Size   int
-}
-
-func NewLoggingResponseWriter(w http.ResponseWriter) *LoggingResponseWriter {
-	return &LoggingResponseWriter{
-		ResponseWriter: w,
-
-		Status: 200,
-		Size:   0,
-	}
-}
-
-func (w *LoggingResponseWriter) Write(d []byte) (int, error) {
-	n, err := w.ResponseWriter.Write(d)
-
-	w.Size = n
-
-	return n, err
-}
-
-func (w *LoggingResponseWriter) Header() http.Header {
-	return w.ResponseWriter.Header()
-}
-
-func (w *LoggingResponseWriter) WriteHeader(statusCode int) {
-	w.Status = statusCode
-
-	w.ResponseWriter.WriteHeader(statusCode)
-}
-
 func Logging(skipPaths ...[]string) func(next http.Handler) http.Handler {
 	skip := make(map[string]struct{}, 0)
 
@@ -58,7 +24,7 @@ func Logging(skipPaths ...[]string) func(next http.Handler) http.Handler {
 				}
 			}
 
-			lrw := NewLoggingResponseWriter(w)
+			lrw := NewResponseWriter(w)
 			next.ServeHTTP(lrw, r)
 			slog.Info("http request",
 				"remote_addr", r.RemoteAddr,

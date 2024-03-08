@@ -17,6 +17,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/propagation"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -39,8 +40,9 @@ func Handler(bus *transport.Connection) http.Handler {
 		AllowCredentials: false,
 		MaxAge:           300, // Maximum value not ignored by any of major browsers
 	}))
-	r.Use(middleware.Logging([]string{"/favicon.ico", "/metrics"}))
 	r.Use(middleware.Metrics(meters, []string{"/favicon.ico", "/metrics"}))
+	r.Use(middleware.Tracing([]string{"/favicon.ico", "/metrics"}))
+	r.Use(middleware.Logging([]string{"/favicon.ico", "/metrics"}))
 
 	r.Handle("/metrics", promhttp.Handler())
 
@@ -115,6 +117,17 @@ func Build(bus *transport.Connection) http.HandlerFunc {
 func ListBuildings() http.HandlerFunc {
 	logger := slog.Default().With("context", "ListBuildings")
 	fn := func(w http.ResponseWriter, r *http.Request) {
+		// slog.Debug("creating new trace", "traceparent", r.Header.Get("X-Traceparent"))
+
+		ctx := otel.GetTextMapPropagator().Extract(r.Context(), propagation.HeaderCarrier(r.Header))
+		// carrier := propagation.MapCarrier{
+		// 	"traceparent": r.Header.Get("X-Traceparent"),
+		// }
+		// ctx := otel.GetTextMapPropagator().Extract(r.Context(), carrier)
+
+		_, span := otel.Tracer("test").Start(ctx, "ListBuildings")
+		defer span.End()
+
 		claims, ok := r.Context().Value(auth.ClaimsContext).(*auth.Claims)
 		if !ok || claims == nil {
 			logger.Error("failed to read claims from context")

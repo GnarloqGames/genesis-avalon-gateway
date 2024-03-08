@@ -26,6 +26,7 @@ func Logging(skipPaths ...[]string) func(next http.Handler) http.Handler {
 
 			lrw := NewResponseWriter(w)
 			next.ServeHTTP(lrw, r)
+
 			slog.Info("http request",
 				"remote_addr", r.RemoteAddr,
 				"remote_user", r.URL.User.Username(),
@@ -37,6 +38,7 @@ func Logging(skipPaths ...[]string) func(next http.Handler) http.Handler {
 				"body_bytes_sent", lrw.Size,
 				"http_referer", r.Referer(),
 				"http_user_agent", r.UserAgent(),
+				"trace_id", lrw.Header().Get("X-Trace-Id"),
 			)
 		}
 

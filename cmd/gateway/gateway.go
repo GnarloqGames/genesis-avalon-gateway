@@ -41,7 +41,7 @@ var startCmd = &cobra.Command{
 		cmdContext, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		defer stop()
 
-		otelShutdown, err := observability.Setup(cmdContext)
+		otelShutdown, err := observability.Setup(cmdContext, "gateway", "v0.5.0")
 		if err != nil {
 			return fmt.Errorf("failed to set up observability providers: %w", err)
 		}

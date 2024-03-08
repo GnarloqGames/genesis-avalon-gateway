@@ -1,7 +1,7 @@
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
-github.com/GnarloqGames/genesis-avalon-kit v0.5.0-pre.4 h1:KnmVEMkTQiaTxv5BMBEDCU4r+/zaKj8AmfuXIq2e22U=
-github.com/GnarloqGames/genesis-avalon-kit v0.5.0-pre.4/go.mod h1:vlb+F2ZZEMEowee31d3bIVRjhAM4RXPVdOI3yaqKjkk=
+github.com/GnarloqGames/genesis-avalon-kit v0.5.0-pre.5 h1:mCZiujnzU5GqADFYArufX3DHw1Yix5yABHSoL34A/Dg=
+github.com/GnarloqGames/genesis-avalon-kit v0.5.0-pre.5/go.mod h1:vlb+F2ZZEMEowee31d3bIVRjhAM4RXPVdOI3yaqKjkk=
 github.com/agiledragon/gomonkey/v2 v2.11.0 h1:5oxSgA+tC1xuGsrIorR+sYiziYltmJyEZ9qA25b6l5U=
 github.com/agiledragon/gomonkey/v2 v2.11.0/go.mod h1:ap1AmDzcVOAz1YpeJ3TCzIgstoaWLA6jbbgxfB4w2iY=
 github.com/benbjohnson/clock v1.1.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=

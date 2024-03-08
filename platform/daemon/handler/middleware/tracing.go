@@ -53,6 +53,7 @@ func Tracing(skipPaths ...[]string) func(next http.Handler) http.Handler {
 					code = codes.Error
 					span.SetStatus(codes.Error, fmt.Sprintf("%d %s", rw.Status, http.StatusText(rw.Status)))
 				}
+
 				span.SetStatus(code, fmt.Sprintf("%d %s", rw.Status, http.StatusText(rw.Status)))
 
 				span.End()

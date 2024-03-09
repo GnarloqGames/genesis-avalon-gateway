@@ -117,13 +117,7 @@ func Build(bus *transport.Connection) http.HandlerFunc {
 func ListBuildings() http.HandlerFunc {
 	logger := slog.Default().With("context", "ListBuildings")
 	fn := func(w http.ResponseWriter, r *http.Request) {
-		// slog.Debug("creating new trace", "traceparent", r.Header.Get("X-Traceparent"))
-
 		ctx := otel.GetTextMapPropagator().Extract(r.Context(), propagation.HeaderCarrier(r.Header))
-		// carrier := propagation.MapCarrier{
-		// 	"traceparent": r.Header.Get("X-Traceparent"),
-		// }
-		// ctx := otel.GetTextMapPropagator().Extract(r.Context(), carrier)
 
 		_, span := otel.Tracer("test").Start(ctx, "ListBuildings")
 		defer span.End()

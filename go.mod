@@ -3,7 +3,7 @@ module github.com/GnarloqGames/genesis-avalon-gateway
 go 1.21.0
 
 require (
-	github.com/GnarloqGames/genesis-avalon-kit v0.5.0-pre.5
+	github.com/GnarloqGames/genesis-avalon-kit v0.5.0
 	github.com/agiledragon/gomonkey/v2 v2.11.0
 	github.com/coreos/go-oidc/v3 v3.9.0
 	github.com/go-chi/chi/v5 v5.0.11

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
@@ -13,11 +14,20 @@ import (
 	"github.com/GnarloqGames/genesis-avalon-kit/transport"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/propagation"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func Handler(bus *transport.Connection) http.Handler {
+	meters, err := newMeters()
+	if err != nil {
+		slog.Error("failed to create meters", "error", err)
+	}
+
 	r := chi.NewRouter()
 
 	r.Use(cors.Handler(cors.Options{
@@ -30,11 +40,17 @@ func Handler(bus *transport.Connection) http.Handler {
 		AllowCredentials: false,
 		MaxAge:           300, // Maximum value not ignored by any of major browsers
 	}))
-	r.Use(middleware.Logging())
-	r.Use(auth.Middleware())
+	r.Use(middleware.Metrics(meters, []string{"/favicon.ico", "/metrics"}))
+	r.Use(middleware.Tracing([]string{"/favicon.ico", "/metrics"}))
+	r.Use(middleware.Logging([]string{"/favicon.ico", "/metrics"}))
 
-	r.Post("/build", Build(bus))
-	r.Get("/buildings", ListBuildings())
+	r.Handle("/metrics", promhttp.Handler())
+
+	r.Group(func(rr chi.Router) {
+		rr.Use(auth.Middleware())
+		rr.Post("/build", Build(bus))
+		rr.Get("/buildings", ListBuildings())
+	})
 
 	return r
 }
@@ -101,6 +117,11 @@ func Build(bus *transport.Connection) http.HandlerFunc {
 func ListBuildings() http.HandlerFunc {
 	logger := slog.Default().With("context", "ListBuildings")
 	fn := func(w http.ResponseWriter, r *http.Request) {
+		ctx := otel.GetTextMapPropagator().Extract(r.Context(), propagation.HeaderCarrier(r.Header))
+
+		_, span := otel.Tracer("test").Start(ctx, "ListBuildings")
+		defer span.End()
+
 		claims, ok := r.Context().Value(auth.ClaimsContext).(*auth.Claims)
 		if !ok || claims == nil {
 			logger.Error("failed to read claims from context")
@@ -151,3 +172,30 @@ func ListBuildings() http.HandlerFunc {
 
 // 	return claims
 // }
+
+func newMeters() (middleware.Meters, error) {
+	meter := otel.Meter("gateway")
+
+	reqCounter, err := meter.Int64UpDownCounter(
+		"http.request.num",
+		metric.WithDescription("Number of requests per path"),
+		metric.WithUnit("{request}"),
+	)
+	if err != nil {
+		return middleware.Meters{}, fmt.Errorf("failed to create request counter: %w", err)
+	}
+
+	reqLength, err := meter.Float64Histogram(
+		"http.request.length",
+		metric.WithDescription("Request length"),
+		metric.WithUnit("ms"),
+	)
+	if err != nil {
+		return middleware.Meters{}, fmt.Errorf("failed to create request length histogram: %w", err)
+	}
+
+	return middleware.Meters{
+		RequestCounter: reqCounter,
+		RequestLength:  reqLength,
+	}, nil
+}

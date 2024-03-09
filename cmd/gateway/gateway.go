@@ -14,6 +14,7 @@ import (
 	"github.com/GnarloqGames/genesis-avalon-gateway/platform/auth"
 	"github.com/GnarloqGames/genesis-avalon-gateway/platform/daemon"
 	"github.com/GnarloqGames/genesis-avalon-kit/database/couchbase"
+	"github.com/GnarloqGames/genesis-avalon-kit/observability"
 	"github.com/GnarloqGames/genesis-avalon-kit/transport"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -37,8 +38,18 @@ var startCmd = &cobra.Command{
 	Use:   "start",
 	Short: "Starts the gateway daemon",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		stopChan := make(chan os.Signal, 1)
-		signal.Notify(stopChan, os.Interrupt, syscall.SIGTERM)
+		cmdContext, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer stop()
+
+		otelShutdown, err := observability.Setup(cmdContext, "gateway", "v0.5.0")
+		if err != nil {
+			return fmt.Errorf("failed to set up observability providers: %w", err)
+		}
+		defer func() {
+			if err := otelShutdown(cmdContext); err != nil {
+				slog.Error("failed to shut down all otel providers", "error", err)
+			}
+		}()
 
 		if err := auth.InitProvider(); err != nil {
 			return fmt.Errorf("oidc: %w", err)
@@ -57,7 +68,7 @@ var startCmd = &cobra.Command{
 
 		s := daemon.Start(bus)
 
-		<-stopChan
+		<-cmdContext.Done()
 		slog.Info("shutting down daemon")
 
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)

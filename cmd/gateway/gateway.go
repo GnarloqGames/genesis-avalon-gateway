@@ -13,8 +13,8 @@ import (
 	"github.com/GnarloqGames/genesis-avalon-gateway/logging"
 	"github.com/GnarloqGames/genesis-avalon-gateway/platform/auth"
 	"github.com/GnarloqGames/genesis-avalon-gateway/platform/daemon"
-	"github.com/GnarloqGames/genesis-avalon-kit/database/couchbase"
 	"github.com/GnarloqGames/genesis-avalon-kit/observability"
+	"github.com/GnarloqGames/genesis-avalon-kit/registry"
 	"github.com/GnarloqGames/genesis-avalon-kit/transport"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -55,16 +55,15 @@ var startCmd = &cobra.Command{
 			return fmt.Errorf("oidc: %w", err)
 		}
 
+		if err := registry.Load(cmdContext); err != nil {
+			return fmt.Errorf("registry: %w", err)
+		}
+
 		bus, err := initMessageBus()
 		if err != nil {
 			return fmt.Errorf("message bus: %w", err)
 		}
 		defer bus.Close()
-
-		// Try connecting to Couchbase to catch issues at runtime
-		if _, err := couchbase.Get(); err != nil {
-			return fmt.Errorf("couchbase: %w", err)
-		}
 
 		s := daemon.Start(bus)
 
@@ -105,6 +104,12 @@ func init() {
 	rootCmd.PersistentFlags().String(config.FlagCouchbaseBucket, "default", "Couchbase bucket")
 	rootCmd.PersistentFlags().String(config.FlagCouchbaseUsername, "", "Couchbase username")
 	rootCmd.PersistentFlags().String(config.FlagCouchbasePassword, "", "Couchbase password")
+	rootCmd.PersistentFlags().String(config.FlagDatabaseKind, "", "Database kind")
+	rootCmd.PersistentFlags().String(config.FlagDatabaseHost, "", "Database host")
+	rootCmd.PersistentFlags().String(config.FlagDatabaseUsername, "", "Database username")
+	rootCmd.PersistentFlags().String(config.FlagDatabasePassword, "", "Database password")
+	rootCmd.PersistentFlags().String(config.FlagCockroachDatabase, "", "CockroachDB database")
+	rootCmd.PersistentFlags().String(config.FlagBlueprintVersion, "", "Blueprint version")
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is /etc/gatewayd/config.yaml)")
 
 	envPrefix := "AVALOND"
@@ -122,6 +127,12 @@ func init() {
 		config.FlagCouchbaseBucket:   config.EnvCouchbaseBucket,
 		config.FlagCouchbaseUsername: config.EnvCouchbaseUsername,
 		config.FlagCouchbasePassword: config.EnvCouchbasePassword,
+		config.FlagDatabaseKind:      config.EnvDatabaseKind,
+		config.FlagDatabaseHost:      config.EnvDatabaseHost,
+		config.FlagDatabaseUsername:  config.EnvDatabaseUsername,
+		config.FlagDatabasePassword:  config.EnvDatabasePassword,
+		config.FlagCockroachDatabase: config.EnvCockroachDatabase,
+		config.FlagBlueprintVersion:  config.EnvBlueprintVersion,
 	}
 
 	for flag, env := range bindFlags {

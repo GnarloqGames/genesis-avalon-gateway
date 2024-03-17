@@ -16,6 +16,12 @@ const (
 	EnvCouchbasePassword string = "COUCHBASE_PASSWORD"
 	EnvOidcProvider      string = "OIDC_PROVIDER"
 	EnvOidcClientId      string = "OIDC_CLIENT_ID"
+	EnvDatabaseKind      string = "DB_KIND"
+	EnvDatabaseHost      string = "DB_HOST"
+	EnvDatabaseUsername  string = "DB_USERNAME"
+	EnvDatabasePassword  string = "DB_PASSWORD"
+	EnvCockroachDatabase string = "COCKROACH_DATABASE"
+	EnvBlueprintVersion  string = "BLUEPRINT_VERSION"
 
 	FlagEnvironment       string = "environment"
 	FlagLogLevel          string = "log-level"
@@ -30,4 +36,10 @@ const (
 	FlagCouchbasePassword string = "couchbase-password"
 	FlagOidcProvider      string = "oidc-provider"
 	FlagOidcClientId      string = "oidc-client-id"
+	FlagDatabaseKind      string = "db-kind"
+	FlagDatabaseHost      string = "db-host"
+	FlagDatabaseUsername  string = "db-username"
+	FlagDatabasePassword  string = "db-password"
+	FlagCockroachDatabase string = "cockroach-database"
+	FlagBlueprintVersion  string = "blueprint-version"
 )

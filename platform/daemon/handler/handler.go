@@ -14,6 +14,7 @@ import (
 	"github.com/GnarloqGames/genesis-avalon-kit/transport"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
+	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/metric"
@@ -52,6 +53,10 @@ func Handler(bus *transport.Connection) http.Handler {
 		rr.Get("/buildings", ListBuildings())
 	})
 
+	r.Post("/registry/building", AddBuildingBlueprint())
+	r.Post("/registry/resource", AddResourceBlueprint())
+	r.Get("/registry", Blueprints())
+
 	return r
 }
 
@@ -66,7 +71,7 @@ func Build(bus *transport.Connection) http.HandlerFunc {
 			return
 		}
 
-		if !claims.HasRole("dev.avalon.cool:can-build") {
+		if !claims.HasRole("dev.avalon.cool:inventory:write") {
 			logger.Error("user doesn't have correct permissions", "role", "dev.avalon.cool:can-build", "user_id", claims.Subject)
 			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 
@@ -119,7 +124,7 @@ func ListBuildings() http.HandlerFunc {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		ctx := otel.GetTextMapPropagator().Extract(r.Context(), propagation.HeaderCarrier(r.Header))
 
-		_, span := otel.Tracer("test").Start(ctx, "ListBuildings")
+		ctx, span := otel.Tracer("test").Start(ctx, "ListBuildings")
 		defer span.End()
 
 		claims, ok := r.Context().Value(auth.ClaimsContext).(*auth.Claims)
@@ -138,7 +143,15 @@ func ListBuildings() http.HandlerFunc {
 			return
 		}
 
-		buildings, err := db.GetBuildings(claims.Subject)
+		id, err := uuid.Parse(claims.Subject)
+		if err != nil {
+			logger.Error("failed to parse owner ID", "error", err)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+
+			return
+		}
+
+		buildings, err := db.GetBuildings(ctx, id)
 		if err != nil {
 			logger.Error("failed to fetch buildings", "error", err)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)

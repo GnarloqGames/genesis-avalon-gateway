@@ -14,7 +14,7 @@ import (
 	"github.com/GnarloqGames/genesis-avalon-gateway/platform/auth"
 	"github.com/GnarloqGames/genesis-avalon-gateway/platform/daemon"
 	"github.com/GnarloqGames/genesis-avalon-kit/observability"
-	"github.com/GnarloqGames/genesis-avalon-kit/registry"
+	"github.com/GnarloqGames/genesis-avalon-kit/registry/cache"
 	"github.com/GnarloqGames/genesis-avalon-kit/transport"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -55,7 +55,7 @@ var startCmd = &cobra.Command{
 			return fmt.Errorf("oidc: %w", err)
 		}
 
-		if err := registry.Load(cmdContext); err != nil {
+		if err := cache.Load(cmdContext); err != nil {
 			return fmt.Errorf("registry: %w", err)
 		}
 
@@ -100,39 +100,31 @@ func init() {
 	rootCmd.PersistentFlags().String(config.FlagLogKind, "text", "log kind (text or json, default is text)")
 	rootCmd.PersistentFlags().String(config.FlagOidcProvider, "", "OIDC provider URL")
 	rootCmd.PersistentFlags().String(config.FlagOidcClientId, "", "OIDC client ID")
-	rootCmd.PersistentFlags().String(config.FlagCouchbaseURL, "127.0.0.1", "Couchbase host")
-	rootCmd.PersistentFlags().String(config.FlagCouchbaseBucket, "default", "Couchbase bucket")
-	rootCmd.PersistentFlags().String(config.FlagCouchbaseUsername, "", "Couchbase username")
-	rootCmd.PersistentFlags().String(config.FlagCouchbasePassword, "", "Couchbase password")
 	rootCmd.PersistentFlags().String(config.FlagDatabaseKind, "", "Database kind")
 	rootCmd.PersistentFlags().String(config.FlagDatabaseHost, "", "Database host")
+	rootCmd.PersistentFlags().String(config.FlagDatabaseName, "", "Database name")
 	rootCmd.PersistentFlags().String(config.FlagDatabaseUsername, "", "Database username")
 	rootCmd.PersistentFlags().String(config.FlagDatabasePassword, "", "Database password")
-	rootCmd.PersistentFlags().String(config.FlagCockroachDatabase, "", "CockroachDB database")
 	rootCmd.PersistentFlags().String(config.FlagBlueprintVersion, "", "Blueprint version")
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is /etc/gatewayd/config.yaml)")
 
 	envPrefix := "AVALOND"
 	bindFlags := map[string]string{
-		config.FlagEnvironment:       config.EnvEnvironment,
-		config.FlagLogLevel:          config.EnvLogLevel,
-		config.FlagLogKind:           config.EnvLogKind,
-		config.FlagGatewayHost:       config.EnvGatewayHost,
-		config.FlagGatewayPort:       config.EnvGatewayPort,
-		config.FlagNatsAddress:       config.EnvNatsAddress,
-		config.FlagNatsEncoding:      config.EnvNatsEncoding,
-		config.FlagOidcProvider:      config.EnvOidcProvider,
-		config.FlagOidcClientId:      config.EnvOidcClientId,
-		config.FlagCouchbaseURL:      config.EnvCouchbaseURL,
-		config.FlagCouchbaseBucket:   config.EnvCouchbaseBucket,
-		config.FlagCouchbaseUsername: config.EnvCouchbaseUsername,
-		config.FlagCouchbasePassword: config.EnvCouchbasePassword,
-		config.FlagDatabaseKind:      config.EnvDatabaseKind,
-		config.FlagDatabaseHost:      config.EnvDatabaseHost,
-		config.FlagDatabaseUsername:  config.EnvDatabaseUsername,
-		config.FlagDatabasePassword:  config.EnvDatabasePassword,
-		config.FlagCockroachDatabase: config.EnvCockroachDatabase,
-		config.FlagBlueprintVersion:  config.EnvBlueprintVersion,
+		config.FlagEnvironment:      config.EnvEnvironment,
+		config.FlagLogLevel:         config.EnvLogLevel,
+		config.FlagLogKind:          config.EnvLogKind,
+		config.FlagGatewayHost:      config.EnvGatewayHost,
+		config.FlagGatewayPort:      config.EnvGatewayPort,
+		config.FlagNatsAddress:      config.EnvNatsAddress,
+		config.FlagNatsEncoding:     config.EnvNatsEncoding,
+		config.FlagOidcProvider:     config.EnvOidcProvider,
+		config.FlagOidcClientId:     config.EnvOidcClientId,
+		config.FlagDatabaseKind:     config.EnvDatabaseKind,
+		config.FlagDatabaseHost:     config.EnvDatabaseHost,
+		config.FlagDatabaseUsername: config.EnvDatabaseUsername,
+		config.FlagDatabasePassword: config.EnvDatabasePassword,
+		config.FlagDatabaseName:     config.EnvDatabaseName,
+		config.FlagBlueprintVersion: config.EnvBlueprintVersion,
 	}
 
 	for flag, env := range bindFlags {

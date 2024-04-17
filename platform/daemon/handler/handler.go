@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -9,11 +8,12 @@ import (
 
 	"github.com/GnarloqGames/genesis-avalon-gateway/platform/auth"
 	"github.com/GnarloqGames/genesis-avalon-gateway/platform/daemon/handler/middleware"
-	"github.com/GnarloqGames/genesis-avalon-kit/database/couchbase"
+	"github.com/GnarloqGames/genesis-avalon-kit/database"
 	"github.com/GnarloqGames/genesis-avalon-kit/proto"
 	"github.com/GnarloqGames/genesis-avalon-kit/transport"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
+	"github.com/go-chi/render"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.opentelemetry.io/otel"
@@ -53,9 +53,8 @@ func Handler(bus *transport.Connection) http.Handler {
 		rr.Get("/buildings", ListBuildings())
 	})
 
-	r.Post("/registry/building", AddBuildingBlueprint())
-	r.Post("/registry/resource", AddResourceBlueprint())
-	r.Get("/registry", Blueprints())
+	r.Post("/registry/blueprint", AddBlueprint())
+	r.Get("/registry/blueprint/{version}", GetBlueprints())
 
 	return r
 }
@@ -135,7 +134,7 @@ func ListBuildings() http.HandlerFunc {
 			return
 		}
 
-		db, err := couchbase.Get()
+		db, err := database.Get()
 		if err != nil {
 			logger.Error("failed to get database connection", "error", err)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -164,13 +163,7 @@ func ListBuildings() http.HandlerFunc {
 			"buildings": buildings,
 		}
 
-		encoder := json.NewEncoder(w)
-		if err := encoder.Encode(response); err != nil {
-			logger.Error("failed to encode response", "error", err)
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-
-			return
-		}
+		render.JSON(w, r, response)
 	}
 
 	return http.HandlerFunc(fn)

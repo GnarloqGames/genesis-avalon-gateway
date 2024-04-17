@@ -2,70 +2,126 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 
+	"github.com/GnarloqGames/genesis-avalon-gateway/platform/daemon/model"
 	"github.com/GnarloqGames/genesis-avalon-kit/registry"
+	"github.com/GnarloqGames/genesis-avalon-kit/registry/cache"
+	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
+	"gopkg.in/yaml.v3"
 )
 
-func Blueprints() http.HandlerFunc {
+type ErrInvalidMediaType struct {
+	mediaType string
+}
+
+func (e ErrInvalidMediaType) Error() string {
+	return fmt.Sprintf("invalid media type: %s", e.mediaType)
+}
+
+func NewErrInvalidMediaType(t string) ErrInvalidMediaType {
+	return ErrInvalidMediaType{
+		mediaType: t,
+	}
+}
+
+func GetBlueprints() http.HandlerFunc {
 	fn := func(w http.ResponseWriter, r *http.Request) {
-		store := registry.GetLoadedBlueprints(r.Context())
+		version := chi.URLParam(r, "version")
+
+		var store map[string]any
+
+		switch version {
+		case "current":
+			store = cache.GetLoadedBlueprints(r.Context())
+		default:
+			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+			return
+		}
+
 		render.JSON(w, r, store)
 	}
 
 	return http.HandlerFunc(fn)
 }
 
-func AddBuildingBlueprint() http.HandlerFunc {
+func AddBlueprint() http.HandlerFunc {
 	fn := func(w http.ResponseWriter, r *http.Request) {
-		decoder := json.NewDecoder(r.Body)
+		req, err := decodeRequest(r)
+		if err != nil {
+			slog.Error("failed to decode blueprint request", "error", err)
 
-		var blueprint registry.BuildingBlueprintRequest
+			if _, ok := err.(ErrInvalidMediaType); ok {
+				http.Error(w, http.StatusText(http.StatusUnsupportedMediaType), http.StatusUnsupportedMediaType)
+			} else {
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			}
 
-		if err := decoder.Decode(&blueprint); err != nil {
-			slog.Error("failed to decode building blueprint", "error", err)
+			return
+		}
+
+		var insertErr error
+
+		switch req.Kind {
+		case model.KindBuilding:
+			insertErr = registry.SaveBuildingBlueprint(r.Context(), req.Definition.(registry.BuildingBlueprintRequest), req.Force)
+		case model.KindResource:
+			insertErr = registry.SaveResourceBlueprint(r.Context(), req.Definition.(registry.ResourceBlueprintRequest), req.Force)
+		case "":
+			slog.Info("error: missing kind field")
+			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+
+			return
+		default:
+			slog.Debug("error: invalid kind field", "kind", req.Kind)
+			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+
+			return
+		}
+
+		if insertErr != nil {
+			slog.Error("failed to insert blueprint", "error", insertErr, "kind", req.Kind)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 
 			return
 		}
 
-		if err := registry.SaveBuildingBlueprint(r.Context(), blueprint); err != nil {
-			slog.Error("failed to save building blueprint", "error", err)
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-
-			return
-		}
-
-		render.JSON(w, r, struct{ Result string }{Result: "OK"})
+		render.JSON(w, r, map[string]interface{}{"status": "OK"})
 	}
 
 	return http.HandlerFunc(fn)
 }
 
-func AddResourceBlueprint() http.HandlerFunc {
-	fn := func(w http.ResponseWriter, r *http.Request) {
-		decoder := json.NewDecoder(r.Body)
+type bodyDecoder interface {
+	Decode(v any) error
+}
 
-		var blueprint registry.ResourceBlueprintRequest
+func decodeRequest(r *http.Request) (*model.BlueprintRequest, error) {
+	contentType := r.Header.Get("Content-Type")
 
-		if err := decoder.Decode(&blueprint); err != nil {
-			slog.Error("failed to decode resource blueprint", "error", err)
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-
-			return
-		}
-
-		if err := registry.SaveResourceBlueprint(r.Context(), blueprint); err != nil {
-			slog.Error("failed to save resource blueprint", "error", err)
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-
-			return
-		}
-
-		render.JSON(w, r, struct{ Result string }{Result: "OK"})
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		return nil, err
 	}
 
-	return http.HandlerFunc(fn)
+	var rr model.BlueprintRequest
+
+	switch contentType {
+	case "application/json":
+		err = json.Unmarshal(body, &rr)
+	case "application/yaml":
+		err = yaml.Unmarshal(body, &rr)
+	default:
+		return nil, NewErrInvalidMediaType(contentType)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &rr, nil
 }

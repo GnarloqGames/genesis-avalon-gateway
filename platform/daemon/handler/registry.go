@@ -6,12 +6,15 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"strings"
 
+	"github.com/GnarloqGames/genesis-avalon-gateway/config"
 	"github.com/GnarloqGames/genesis-avalon-gateway/platform/daemon/model"
 	"github.com/GnarloqGames/genesis-avalon-kit/registry"
 	"github.com/GnarloqGames/genesis-avalon-kit/registry/cache"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
+	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
 )
 
@@ -36,7 +39,7 @@ func GetBlueprints() http.HandlerFunc {
 		var store map[string]any
 
 		switch version {
-		case "current":
+		case "current", viper.GetString(config.FlagBlueprintVersion):
 			store = cache.GetLoadedBlueprints(r.Context())
 		default:
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
@@ -47,6 +50,65 @@ func GetBlueprints() http.HandlerFunc {
 	}
 
 	return http.HandlerFunc(fn)
+}
+
+func GetBlueprint() http.HandlerFunc {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		version := chi.URLParam(r, "version")
+		kind := chi.URLParam(r, "kind")
+		slug := chi.URLParam(r, "slug")
+
+		version = strings.TrimPrefix(version, "v")
+
+		// If we're trying to get currently deployed version, try cache first
+		if version == "current" || version == viper.GetString(config.FlagBlueprintVersion) {
+			var (
+				bp any
+				ok bool
+			)
+
+			switch kind {
+			case "building":
+				bp, ok = cache.GetBuildingBlueprint(r.Context(), slug)
+			case "resource":
+				bp, ok = cache.GetResourceBlueprint(r.Context(), slug)
+			}
+
+			if !ok {
+				http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+				return
+			}
+
+			render.JSON(w, r, bp)
+
+			return
+		}
+
+		switch kind {
+		case "building":
+			bp, err := registry.GetBuildingBlueprint(r.Context(), version, slug)
+			if err != nil {
+				slog.Debug("failed to get building blueprint", "version", version, "slug", slug)
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+
+				return
+			}
+
+			render.JSON(w, r, bp)
+		case "resource":
+			bp, err := registry.GetResourceBlueprint(r.Context(), version, slug)
+			if err != nil {
+				slog.Debug("failed to get resource blueprint", "version", version, "slug", slug)
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+
+				return
+			}
+
+			render.JSON(w, r, bp)
+		}
+	}
+
+	return fn
 }
 
 func AddBlueprint() http.HandlerFunc {

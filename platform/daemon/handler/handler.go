@@ -54,6 +54,7 @@ func Handler(bus *transport.Connection) http.Handler {
 	})
 
 	r.Post("/registry/blueprint", AddBlueprint())
+	r.Get("/registry/blueprint/{version}/{kind}/{slug}", GetBlueprint())
 	r.Get("/registry/blueprint/{version}", GetBlueprints())
 
 	return r

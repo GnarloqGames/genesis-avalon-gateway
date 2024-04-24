@@ -14,6 +14,7 @@ func TestHasRole(t *testing.T) {
 				Roles: []string{
 					"test-role",
 					"other-role",
+					"nested:role",
 				},
 			},
 		},
@@ -29,6 +30,14 @@ func TestHasRole(t *testing.T) {
 		},
 		{
 			path:     "test-resource:bogus",
+			expected: false,
+		},
+		{
+			path:     "test-resource:nested:role",
+			expected: true,
+		},
+		{
+			path:     "non-existent:resource",
 			expected: false,
 		},
 		{

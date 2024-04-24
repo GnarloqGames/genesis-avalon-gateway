@@ -77,8 +77,8 @@ func Verify(ctx context.Context, accessToken string) (*oidc.IDToken, error) {
 }
 
 func (c *Claims) HasRole(path string) bool {
-	segments := strings.Split(path, ":")
-	if len(segments) != 2 {
+	segments := strings.SplitN(path, ":", 2)
+	if len(segments) < 2 {
 		return false
 	}
 

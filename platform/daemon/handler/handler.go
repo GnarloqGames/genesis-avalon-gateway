@@ -53,6 +53,12 @@ func Handler(bus *transport.Connection) http.Handler {
 		rr.Get("/buildings", ListBuildings())
 	})
 
+	r.Group(func(rr chi.Router) {
+		rr.Use(auth.Middleware())
+
+		rr.Post("/registry/reload/{version}", ReloadBlueprints())
+	})
+
 	r.Post("/registry/blueprint", AddBlueprint())
 	r.Get("/registry/blueprint/{version}/{kind}/{slug}", GetBlueprint())
 	r.Get("/registry/blueprint/{version}", GetBlueprints())
@@ -72,7 +78,7 @@ func Build(bus *transport.Connection) http.HandlerFunc {
 		}
 
 		if !claims.HasRole("dev.avalon.cool:inventory:write") {
-			logger.Error("user doesn't have correct permissions", "role", "dev.avalon.cool:can-build", "user_id", claims.Subject)
+			logger.Error("user doesn't have correct permissions", "role", "dev.avalon.cool:inventory:write", "user_id", claims.Subject)
 			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 
 			return

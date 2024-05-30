@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/GnarloqGames/genesis-avalon-gateway/platform/auth"
+	"github.com/GnarloqGames/genesis-avalon-gateway/platform/auth/claims"
+	"github.com/GnarloqGames/genesis-avalon-gateway/platform/auth/provider"
 	"github.com/GnarloqGames/genesis-avalon-gateway/platform/daemon/handler/middleware"
 	"github.com/GnarloqGames/genesis-avalon-kit/database"
 	"github.com/GnarloqGames/genesis-avalon-kit/proto"
@@ -23,7 +25,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func Handler(bus *transport.Connection) http.Handler {
+func Handler(bus *transport.Connection, verifier provider.TokenVerifier) http.Handler {
 	meters, err := newMeters()
 	if err != nil {
 		slog.Error("failed to create meters", "error", err)
@@ -48,13 +50,13 @@ func Handler(bus *transport.Connection) http.Handler {
 	r.Handle("/metrics", promhttp.Handler())
 
 	r.Group(func(rr chi.Router) {
-		rr.Use(auth.Middleware())
+		rr.Use(auth.Middleware(verifier))
 		rr.Post("/build", Build(bus))
 		rr.Get("/buildings", ListBuildings())
 	})
 
 	r.Group(func(rr chi.Router) {
-		rr.Use(auth.Middleware())
+		rr.Use(auth.Middleware(verifier))
 
 		rr.Post("/registry/reload/{version}", ReloadBlueprints())
 	})
@@ -69,7 +71,7 @@ func Handler(bus *transport.Connection) http.Handler {
 func Build(bus *transport.Connection) http.HandlerFunc {
 	logger := slog.Default().With("context", "Build")
 	fn := func(w http.ResponseWriter, r *http.Request) {
-		claims, ok := r.Context().Value(auth.ClaimsContext).(*auth.Claims)
+		claims, ok := r.Context().Value(auth.ClaimsContext).(*claims.Claims)
 		if !ok || claims == nil {
 			logger.Error("failed to read claims from context")
 			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
@@ -133,7 +135,7 @@ func ListBuildings() http.HandlerFunc {
 		ctx, span := otel.Tracer("test").Start(ctx, "ListBuildings")
 		defer span.End()
 
-		claims, ok := r.Context().Value(auth.ClaimsContext).(*auth.Claims)
+		claims, ok := r.Context().Value(auth.ClaimsContext).(*claims.Claims)
 		if !ok || claims == nil {
 			logger.Error("failed to read claims from context")
 			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)

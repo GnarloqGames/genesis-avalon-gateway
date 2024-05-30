@@ -158,10 +158,6 @@ func AddBlueprint() http.HandlerFunc {
 	return http.HandlerFunc(fn)
 }
 
-type bodyDecoder interface {
-	Decode(v any) error
-}
-
 func decodeRequest(r *http.Request) (*model.BlueprintRequest, error) {
 	contentType := r.Header.Get("Content-Type")
 

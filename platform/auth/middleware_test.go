@@ -5,61 +5,39 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"reflect"
 	"testing"
 	"time"
-	"unsafe"
 
-	"github.com/agiledragon/gomonkey/v2"
-	"github.com/coreos/go-oidc/v3/oidc"
+	"github.com/GnarloqGames/genesis-avalon-gateway/platform/auth/claims"
+	"github.com/GnarloqGames/genesis-avalon-gateway/platform/auth/provider/mockverifier"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
-
-func setIDTokenClaims(idToken *oidc.IDToken, claims []byte) {
-	pointerVal := reflect.ValueOf(idToken)
-	val := reflect.Indirect(pointerVal)
-	member := val.FieldByName("claims")
-	ptr := unsafe.Pointer(member.UnsafeAddr())
-	realPtr := (*[]byte)(ptr)
-	*realPtr = claims
-}
 
 func TestInjectClaims(t *testing.T) {
 	subject := "196176fd-6e54-49c2-9e49-eb81406c68d5"
 	now := time.Now().Add(5 * time.Minute)
 
-	patches := gomonkey.ApplyFunc(Verify, func(ctx context.Context, accessToken string) (*oidc.IDToken, error) {
-		claims := fmt.Sprintf(`{
-"email": "test@test.com",
-"email_verified": true,
-"exp": %d,
-"preferred_username": "testing",
-"resource_access": {
-    "test-resource": {
-        "roles": [
-            "test-role"
-        ]
-    }
-},
-"sub": "%s"
-}`,
-			now.Unix(), subject)
-
-		token := &oidc.IDToken{
-			Subject: subject,
-			Expiry:  now,
-		}
-		setIDTokenClaims(token, []byte(claims))
-
-		return token, nil
+	verifier := mockverifier.New(mockverifier.Expectation{
+		Token: "foo",
+		Claims: &claims.Claims{
+			Subject:   subject,
+			ExpiresAt: now,
+			Access: map[string]claims.Access{
+				"test-resource": {
+					Resource: "test-resource",
+					Roles: []string{
+						"test-role",
+					},
+				},
+			},
+		},
 	})
-	defer patches.Reset()
 
-	ctx, err := injectClaims(context.Background(), "foo")
+	ctx, err := injectClaims(context.Background(), verifier, "foo")
 	assert.NoError(t, err)
 
-	claims, ok := ctx.Value(ClaimsContext).(*Claims)
+	claims, ok := ctx.Value(ClaimsContext).(*claims.Claims)
 	assert.True(t, ok)
 	assert.NotNil(t, claims)
 	assert.Equal(t, now.Unix(), claims.ExpiresAt.Unix())
@@ -77,34 +55,26 @@ func (m *MockResponseWriter) WriteHeader(status int)      { m.Status = status }
 func TestMiddleware(t *testing.T) {
 	subject := uuid.New().String()
 	now := time.Now().Add(5 * time.Minute)
-	patches := gomonkey.ApplyFunc(Verify, func(ctx context.Context, accessToken string) (*oidc.IDToken, error) {
-		claims := fmt.Sprintf(`{
-"email": "test@test.com",
-"email_verified": true,
-"exp": %d,
-"preferred_username": "testing",
-"resource_access": {
-    "test-resource": {
-        "roles": [
-            "test-role"
-        ]
-    }
-},
-"sub": "%s"
-}`,
-			now.Unix(), subject)
 
-		token := &oidc.IDToken{
-			Subject: subject,
-			Expiry:  now,
-		}
-		setIDTokenClaims(token, []byte(claims))
+	token := uuid.New()
 
-		return token, nil
+	verifier := mockverifier.New(mockverifier.Expectation{
+		Token: token.String(),
+		Claims: &claims.Claims{
+			Subject:   subject,
+			ExpiresAt: now,
+			Access: map[string]claims.Access{
+				"test-resource": {
+					Resource: "test-resource",
+					Roles: []string{
+						"test-role",
+					},
+				},
+			},
+		},
 	})
-	defer patches.Reset()
 
-	fn := Middleware()
+	fn := Middleware(verifier)
 
 	var ctx context.Context
 
@@ -116,13 +86,13 @@ func TestMiddleware(t *testing.T) {
 
 	success := func(t *testing.T) {
 		req, err := http.NewRequest(http.MethodGet, "", nil)
-		req.Header.Add("Authorization", "Bearer asd")
+		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token.String()))
 		assert.NoError(t, err)
 
 		mrw := &MockResponseWriter{}
 		outer.ServeHTTP(mrw, req)
 
-		claims, ok := ctx.Value(ClaimsContext).(*Claims)
+		claims, ok := ctx.Value(ClaimsContext).(*claims.Claims)
 		assert.True(t, ok)
 		assert.NotNil(t, claims)
 		assert.Equal(t, now.Unix(), claims.ExpiresAt.Unix())

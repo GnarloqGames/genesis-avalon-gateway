@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/GnarloqGames/genesis-avalon-gateway/platform/auth"
+	"github.com/GnarloqGames/genesis-avalon-gateway/platform/auth/claims"
 	"github.com/GnarloqGames/genesis-avalon-kit/registry/cache"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
@@ -14,7 +15,7 @@ import (
 func ReloadBlueprints() http.HandlerFunc {
 	logger := slog.Default().With("context", "Build")
 	fn := func(w http.ResponseWriter, r *http.Request) {
-		claims, ok := r.Context().Value(auth.ClaimsContext).(*auth.Claims)
+		claims, ok := r.Context().Value(auth.ClaimsContext).(*claims.Claims)
 		if !ok || claims == nil {
 			logger.Error("failed to read claims from context")
 			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)

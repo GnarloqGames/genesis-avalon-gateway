@@ -11,7 +11,7 @@ import (
 
 	"github.com/GnarloqGames/genesis-avalon-gateway/config"
 	"github.com/GnarloqGames/genesis-avalon-gateway/logging"
-	"github.com/GnarloqGames/genesis-avalon-gateway/platform/auth"
+	"github.com/GnarloqGames/genesis-avalon-gateway/platform/auth/provider/oidc"
 	"github.com/GnarloqGames/genesis-avalon-gateway/platform/daemon"
 	"github.com/GnarloqGames/genesis-avalon-kit/observability"
 	"github.com/GnarloqGames/genesis-avalon-kit/registry/cache"
@@ -51,7 +51,10 @@ var startCmd = &cobra.Command{
 			}
 		}()
 
-		if err := auth.InitProvider(); err != nil {
+		provider := viper.GetString(config.FlagOidcProvider)
+		clientID := viper.GetString(config.FlagOidcClientId)
+		oidcVerifier, err := oidc.New(provider, clientID)
+		if err != nil {
 			return fmt.Errorf("oidc: %w", err)
 		}
 
@@ -65,7 +68,7 @@ var startCmd = &cobra.Command{
 		}
 		defer bus.Close()
 
-		s := daemon.Start(bus)
+		s := daemon.Start(bus, oidcVerifier)
 
 		<-cmdContext.Done()
 		slog.Info("shutting down daemon")

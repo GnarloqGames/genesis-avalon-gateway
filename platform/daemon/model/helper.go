@@ -14,16 +14,16 @@ func getString(m map[string]interface{}, field string) (string, bool) {
 	return rr, true
 }
 
-func getBool(m map[string]interface{}, field string) (bool, bool) {
-	r, ok := m[field]
-	if !ok {
-		return false, ok
-	}
+// func getBool(m map[string]interface{}, field string) (bool, bool) {
+// 	r, ok := m[field]
+// 	if !ok {
+// 		return false, ok
+// 	}
 
-	rr, ok := r.(bool)
-	if !ok {
-		return false, ok
-	}
+// 	rr, ok := r.(bool)
+// 	if !ok {
+// 		return false, ok
+// 	}
 
-	return rr, true
-}
+// 	return rr, true
+// }

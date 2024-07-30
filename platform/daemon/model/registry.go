@@ -28,6 +28,7 @@ func (b *BlueprintRequest) UnmarshalJSON(d []byte) error {
 	}
 
 	rawBody := []byte("{}")
+
 	if body, ok := tmp["body"].(map[string]interface{}); ok {
 		if raw, err := json.Marshal(body); err != nil {
 			return err
@@ -67,6 +68,7 @@ func (b *BlueprintRequest) UnmarshalYAML(x *yaml.Node) error {
 	}
 
 	rawBody := []byte("{}")
+
 	if body, ok := tmp["body"].(map[string]interface{}); ok {
 		if raw, err := json.Marshal(body); err != nil {
 			return err

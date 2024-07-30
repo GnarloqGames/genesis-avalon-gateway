@@ -23,16 +23,14 @@ const (
 
 var (
 	buildingBody = model.BlueprintRequest{
-		Kind:  "building",
-		Force: true,
+		Kind: "building",
 		Definition: registry.BuildingBlueprintRequest{
 			Name: "house",
 		},
 	}
 
 	buildingErrorBody = model.BlueprintRequest{
-		Kind:  "building",
-		Force: true,
+		Kind: "building",
 		Definition: registry.BuildingBlueprintRequest{
 			Name:    "house",
 			Version: errVersion,
@@ -40,23 +38,20 @@ var (
 	}
 
 	resourceBody = model.BlueprintRequest{
-		Kind:  "resource",
-		Force: true,
+		Kind: "resource",
 		Definition: registry.ResourceBlueprintRequest{
 			Name: "wood",
 		},
 	}
 
 	invalidKind = model.BlueprintRequest{
-		Kind:  "bogus",
-		Force: true,
+		Kind: "bogus",
 		Definition: registry.BuildingBlueprintRequest{
 			Name: "house",
 		},
 	}
 
 	missingKind = model.BlueprintRequest{
-		Force: true,
 		Definition: registry.BuildingBlueprintRequest{
 			Name: "house",
 		},

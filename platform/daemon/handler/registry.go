@@ -113,7 +113,7 @@ func GetBlueprint() http.HandlerFunc {
 
 func AddBlueprint() http.HandlerFunc {
 	fn := func(w http.ResponseWriter, r *http.Request) {
-		req, err := decodeRequest(r)
+		req, err := decodeRequest[*model.BlueprintRequest](r)
 		if err != nil {
 			slog.Error("failed to decode blueprint request", "error", err)
 
@@ -130,9 +130,9 @@ func AddBlueprint() http.HandlerFunc {
 
 		switch req.Kind {
 		case model.KindBuilding:
-			insertErr = registry.SaveBuildingBlueprint(r.Context(), req.Definition.(registry.BuildingBlueprintRequest), req.Force)
+			insertErr = registry.SaveBuildingBlueprint(r.Context(), req.Definition.(registry.BuildingBlueprintRequest), false)
 		case model.KindResource:
-			insertErr = registry.SaveResourceBlueprint(r.Context(), req.Definition.(registry.ResourceBlueprintRequest), req.Force)
+			insertErr = registry.SaveResourceBlueprint(r.Context(), req.Definition.(registry.ResourceBlueprintRequest), false)
 		case "":
 			slog.Info("error: missing kind field")
 			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
@@ -158,15 +158,20 @@ func AddBlueprint() http.HandlerFunc {
 	return http.HandlerFunc(fn)
 }
 
-func decodeRequest(r *http.Request) (*model.BlueprintRequest, error) {
+type RequestInto interface {
+	*model.BlueprintRequest
+}
+
+func decodeRequest[T RequestInto](r *http.Request) (T, error) {
 	contentType := r.Header.Get("Content-Type")
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return nil, err
 	}
+	defer r.Body.Close()
 
-	var rr model.BlueprintRequest
+	var rr T
 
 	switch contentType {
 	case "application/json":
@@ -181,5 +186,5 @@ func decodeRequest(r *http.Request) (*model.BlueprintRequest, error) {
 		return nil, err
 	}
 
-	return &rr, nil
+	return rr, nil
 }

@@ -14,7 +14,6 @@ const (
 
 type BlueprintRequest struct {
 	Kind       string           `json:"kind"`
-	Force      bool             `json:"force"`
 	Definition registry.Request `json:"body"`
 }
 
@@ -35,10 +34,6 @@ func (b *BlueprintRequest) UnmarshalJSON(d []byte) error {
 		} else {
 			rawBody = raw
 		}
-	}
-
-	if force, ok := getBool(tmp, "force"); ok {
-		b.Force = force
 	}
 
 	switch b.Kind {
@@ -78,10 +73,6 @@ func (b *BlueprintRequest) UnmarshalYAML(x *yaml.Node) error {
 		} else {
 			rawBody = raw
 		}
-	}
-
-	if force, ok := getBool(tmp, "force"); ok {
-		b.Force = force
 	}
 
 	switch b.Kind {

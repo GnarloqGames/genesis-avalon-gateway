@@ -14,6 +14,7 @@ const (
 
 type BlueprintRequest struct {
 	Kind       string           `json:"kind"`
+	Version    string           `json:"version"`
 	Definition registry.Request `json:"body"`
 }
 
@@ -25,6 +26,10 @@ func (b *BlueprintRequest) UnmarshalJSON(d []byte) error {
 
 	if kind, ok := getString(tmp, "kind"); ok {
 		b.Kind = kind
+	}
+
+	if version, ok := getString(tmp, "version"); ok {
+		b.Version = version
 	}
 
 	rawBody := []byte("{}")
@@ -43,6 +48,7 @@ func (b *BlueprintRequest) UnmarshalJSON(d []byte) error {
 		if err := json.Unmarshal(rawBody, &breq); err != nil {
 			return err
 		}
+		breq.Version = b.Version
 
 		b.Definition = registry.Request(breq)
 	case KindResource:
@@ -50,6 +56,7 @@ func (b *BlueprintRequest) UnmarshalJSON(d []byte) error {
 		if err := json.Unmarshal(rawBody, &rreq); err != nil {
 			return err
 		}
+		rreq.Version = b.Version
 
 		b.Definition = registry.Request(rreq)
 	}
@@ -67,6 +74,10 @@ func (b *BlueprintRequest) UnmarshalYAML(x *yaml.Node) error {
 		b.Kind = kind
 	}
 
+	if version, ok := getString(tmp, "version"); ok {
+		b.Version = version
+	}
+
 	rawBody := []byte("{}")
 
 	if body, ok := tmp["body"].(map[string]interface{}); ok {
@@ -83,6 +94,7 @@ func (b *BlueprintRequest) UnmarshalYAML(x *yaml.Node) error {
 		if err := json.Unmarshal(rawBody, &breq); err != nil {
 			return err
 		}
+		breq.Version = b.Version
 
 		b.Definition = registry.Request(breq)
 	case KindResource:
@@ -90,6 +102,7 @@ func (b *BlueprintRequest) UnmarshalYAML(x *yaml.Node) error {
 		if err := json.Unmarshal(rawBody, &rreq); err != nil {
 			return err
 		}
+		rreq.Version = b.Version
 
 		b.Definition = registry.Request(rreq)
 	}

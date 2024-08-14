@@ -48,7 +48,6 @@ func (b *BlueprintRequest) UnmarshalJSON(d []byte) error {
 		if err := json.Unmarshal(rawBody, &breq); err != nil {
 			return err
 		}
-		breq.Version = b.Version
 
 		b.Definition = registry.Request(breq)
 	case KindResource:
@@ -56,7 +55,6 @@ func (b *BlueprintRequest) UnmarshalJSON(d []byte) error {
 		if err := json.Unmarshal(rawBody, &rreq); err != nil {
 			return err
 		}
-		rreq.Version = b.Version
 
 		b.Definition = registry.Request(rreq)
 	}
@@ -94,7 +92,6 @@ func (b *BlueprintRequest) UnmarshalYAML(x *yaml.Node) error {
 		if err := json.Unmarshal(rawBody, &breq); err != nil {
 			return err
 		}
-		breq.Version = b.Version
 
 		b.Definition = registry.Request(breq)
 	case KindResource:
@@ -102,7 +99,6 @@ func (b *BlueprintRequest) UnmarshalYAML(x *yaml.Node) error {
 		if err := json.Unmarshal(rawBody, &rreq); err != nil {
 			return err
 		}
-		rreq.Version = b.Version
 
 		b.Definition = registry.Request(rreq)
 	}

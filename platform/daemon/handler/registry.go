@@ -131,10 +131,10 @@ func AddBlueprint() http.HandlerFunc {
 		switch req.Kind {
 		case model.KindBuilding:
 			def := req.Definition.(registry.BuildingBlueprintRequest)
-			insertErr = registry.SaveBuildingBlueprint(r.Context(), def, false)
+			insertErr = registry.SaveBuildingBlueprint(r.Context(), req.Version, def, false)
 		case model.KindResource:
 			def := req.Definition.(registry.ResourceBlueprintRequest)
-			insertErr = registry.SaveResourceBlueprint(r.Context(), def, false)
+			insertErr = registry.SaveResourceBlueprint(r.Context(), req.Version, def, false)
 		case "":
 			slog.Info("error: missing kind field")
 			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)

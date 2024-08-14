@@ -30,10 +30,10 @@ var (
 	}
 
 	buildingErrorBody = model.BlueprintRequest{
-		Kind: "building",
+		Kind:    "building",
+		Version: errVersion,
 		Definition: registry.BuildingBlueprintRequest{
-			Name:    "house",
-			Version: errVersion,
+			Name: "house",
 		},
 	}
 
@@ -155,7 +155,7 @@ func TestAddBlueprint(t *testing.T) {
 				return
 			}
 
-			if request.Definition.GetVersion() == errVersion {
+			if request.Version == errVersion {
 				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 				return
 			}

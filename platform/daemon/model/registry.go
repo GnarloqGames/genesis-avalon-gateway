@@ -15,7 +15,15 @@ const (
 type BlueprintRequest struct {
 	Kind       string           `json:"kind"`
 	Version    string           `json:"version"`
+	Force      bool             `json:"force"`
 	Definition registry.Request `json:"body"`
+}
+
+type BlueprintBatchRequest struct {
+	Version   string                              `json:"version"`
+	Force     bool                                `json:"force"`
+	Buildings []registry.BuildingBlueprintRequest `json:"buildings"`
+	Resources []registry.ResourceBlueprintRequest `json:"resources"`
 }
 
 func (b *BlueprintRequest) UnmarshalJSON(d []byte) error {

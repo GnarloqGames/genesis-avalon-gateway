@@ -62,6 +62,7 @@ func Handler(bus *transport.Connection, verifier provider.TokenVerifier) http.Ha
 	})
 
 	r.Post("/registry/blueprint", AddBlueprint())
+	r.Post("/registry/blueprints", AddBlueprintBatch())
 	r.Get("/registry/blueprint/{version}/{kind}/{slug}", GetBlueprint())
 	r.Get("/registry/blueprint/{version}", GetBlueprints())
 

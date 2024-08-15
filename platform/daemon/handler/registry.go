@@ -111,6 +111,54 @@ func GetBlueprint() http.HandlerFunc {
 	return fn
 }
 
+func AddBlueprintBatch() http.HandlerFunc {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		req, err := decodeRequest[*model.BlueprintBatchRequest](r)
+
+		if err != nil {
+			slog.Error("failed to decode blueprint request", "error", err)
+
+			if _, ok := err.(ErrInvalidMediaType); ok {
+				http.Error(w, http.StatusText(http.StatusUnsupportedMediaType), http.StatusUnsupportedMediaType)
+			} else {
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			}
+
+			return
+		}
+
+		for _, building := range req.Buildings {
+			if err := registry.SaveBuildingBlueprint(r.Context(), req.Version, building, req.Force); err != nil {
+				slog.Error("failed to save blueprint",
+					"error", err,
+					"kind", "building",
+					"name", building.Name)
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+
+				return
+			}
+		}
+
+		for _, resource := range req.Resources {
+			if err := registry.SaveResourceBlueprint(r.Context(), req.Version, resource, req.Force); err != nil {
+				slog.Error("failed to save blueprint",
+					"error", err,
+					"kind", "resource",
+					"name", resource.Name)
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+
+				return
+			}
+		}
+
+		render.JSON(w, r, map[string]string{
+			"status": "OK",
+		})
+	}
+
+	return http.HandlerFunc(fn)
+}
+
 func AddBlueprint() http.HandlerFunc {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		req, err := decodeRequest[*model.BlueprintRequest](r)
@@ -164,7 +212,7 @@ type RequestInto interface {
 	*model.BlueprintRequest
 }
 
-func decodeRequest[T RequestInto](r *http.Request) (T, error) {
+func decodeRequest[T *model.BlueprintRequest | *model.BlueprintBatchRequest](r *http.Request) (T, error) {
 	contentType := r.Header.Get("Content-Type")
 
 	body, err := io.ReadAll(r.Body)

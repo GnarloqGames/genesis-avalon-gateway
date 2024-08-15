@@ -2,13 +2,12 @@ module github.com/GnarloqGames/genesis-avalon-gateway
 
 go 1.21.0
 
-replace github.com/GnarloqGames/genesis-avalon-kit v0.6.0 => ../genesis-avalon-kit
+// replace github.com/GnarloqGames/genesis-avalon-kit v0.6.0 => ../genesis-avalon-kit
 
 require (
-	github.com/GnarloqGames/genesis-avalon-kit v0.6.0
+	github.com/GnarloqGames/genesis-avalon-kit v0.7.0
 	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869
 	github.com/coreos/go-oidc/v3 v3.11.0
-	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/go-chi/chi/v5 v5.1.0
 	github.com/go-chi/cors v1.2.1
 	github.com/go-chi/render v1.0.3
@@ -30,6 +29,7 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
+	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/go-jose/go-jose/v4 v4.0.4 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect

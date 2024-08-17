@@ -97,7 +97,6 @@ func init() {
 	rootCmd.PersistentFlags().String("host", "127.0.0.1", "host to bind listener to")
 	rootCmd.PersistentFlags().Uint16("port", uint16(8080), "port to bind listener to")
 	rootCmd.PersistentFlags().String(config.FlagNatsAddress, "127.0.0.1:4222", "NATS address")
-	rootCmd.PersistentFlags().String(config.FlagNatsEncoding, "json", "NATS encoding")
 	rootCmd.PersistentFlags().String(config.FlagEnvironment, "development", "environment")
 	rootCmd.PersistentFlags().String(config.FlagLogLevel, "info", "log level (default is info)")
 	rootCmd.PersistentFlags().String(config.FlagLogKind, "text", "log kind (text or json, default is text)")
@@ -176,22 +175,15 @@ func initMessageBus() (*transport.Connection, error) {
 		natsAddress = defaultNatsAddress
 	}
 
-	natsEncoder := viper.GetString(config.FlagNatsEncoding)
-	if natsEncoder == "" {
-		natsEncoder = defaultNatsEncoder
-	}
-
-	encoder := transport.ParseEncoder(natsEncoder)
 	config := transport.DefaultConfig
 	config.URL = natsAddress
-	config.Encoder = encoder
 
-	bus, err := transport.NewEncodedConn(config)
+	bus, err := transport.NewConn(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to NATS: %w", err)
 	}
 
-	slog.Info("established connection to NATS", "address", natsAddress, "encoding", natsEncoder)
+	slog.Info("established connection to NATS", "address", natsAddress)
 
 	return bus, nil
 }

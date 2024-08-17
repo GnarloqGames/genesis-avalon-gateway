@@ -108,8 +108,10 @@ func Build(bus *transport.Connection) http.HandlerFunc {
 		}
 
 		var res proto.BuildResponse
-		if err := bus.Request("build", req, &res, 10*time.Second); err != nil {
-			logger.Error("failed to send request to message bus", "error", err)
+
+		_, err = transport.Request(bus, "build", req, &res, 10*time.Second)
+		if err != nil {
+			logger.Error("build request failed", "error", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 
 			return
@@ -122,7 +124,7 @@ func Build(bus *transport.Connection) http.HandlerFunc {
 			return
 		}
 
-		w.Write([]byte("OK")) //nolint:errcheck
+		render.JSON(w, r, map[string]string{"status": "OK"})
 	}
 
 	return http.HandlerFunc(fn)

@@ -118,7 +118,6 @@ func init() {
 		config.FlagGatewayHost:      config.EnvGatewayHost,
 		config.FlagGatewayPort:      config.EnvGatewayPort,
 		config.FlagNatsAddress:      config.EnvNatsAddress,
-		config.FlagNatsEncoding:     config.EnvNatsEncoding,
 		config.FlagOidcProvider:     config.EnvOidcProvider,
 		config.FlagOidcClientId:     config.EnvOidcClientId,
 		config.FlagDatabaseKind:     config.EnvDatabaseKind,

@@ -2,10 +2,10 @@ module github.com/GnarloqGames/genesis-avalon-gateway
 
 go 1.21.0
 
-replace github.com/GnarloqGames/genesis-avalon-kit v0.7.1-pre.0 => ../genesis-avalon-kit
+// replace github.com/GnarloqGames/genesis-avalon-kit v0.7.1-pre.0 => ../genesis-avalon-kit
 
 require (
-	github.com/GnarloqGames/genesis-avalon-kit v0.7.1-pre.1
+	github.com/GnarloqGames/genesis-avalon-kit v0.8.0
 	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869
 	github.com/coreos/go-oidc/v3 v3.11.0
 	github.com/go-chi/chi/v5 v5.1.0

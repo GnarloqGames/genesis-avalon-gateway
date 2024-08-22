@@ -11,10 +11,10 @@ import (
 
 	"github.com/GnarloqGames/genesis-avalon-gateway/config"
 	"github.com/GnarloqGames/genesis-avalon-gateway/logging"
-	"github.com/GnarloqGames/genesis-avalon-gateway/platform/auth"
+	"github.com/GnarloqGames/genesis-avalon-gateway/platform/auth/provider/oidc"
 	"github.com/GnarloqGames/genesis-avalon-gateway/platform/daemon"
-	"github.com/GnarloqGames/genesis-avalon-kit/database/couchbase"
 	"github.com/GnarloqGames/genesis-avalon-kit/observability"
+	"github.com/GnarloqGames/genesis-avalon-kit/registry/cache"
 	"github.com/GnarloqGames/genesis-avalon-kit/transport"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -51,8 +51,15 @@ var startCmd = &cobra.Command{
 			}
 		}()
 
-		if err := auth.InitProvider(); err != nil {
+		provider := viper.GetString(config.FlagOidcProvider)
+		clientID := viper.GetString(config.FlagOidcClientId)
+		oidcVerifier, err := oidc.New(provider, clientID)
+		if err != nil {
 			return fmt.Errorf("oidc: %w", err)
+		}
+
+		if err := cache.Load(cmdContext); err != nil {
+			return fmt.Errorf("registry: %w", err)
 		}
 
 		bus, err := initMessageBus()
@@ -61,12 +68,7 @@ var startCmd = &cobra.Command{
 		}
 		defer bus.Close()
 
-		// Try connecting to Couchbase to catch issues at runtime
-		if _, err := couchbase.Get(); err != nil {
-			return fmt.Errorf("couchbase: %w", err)
-		}
-
-		s := daemon.Start(bus)
+		s := daemon.Start(bus, oidcVerifier)
 
 		<-cmdContext.Done()
 		slog.Info("shutting down daemon")
@@ -95,33 +97,35 @@ func init() {
 	rootCmd.PersistentFlags().String("host", "127.0.0.1", "host to bind listener to")
 	rootCmd.PersistentFlags().Uint16("port", uint16(8080), "port to bind listener to")
 	rootCmd.PersistentFlags().String(config.FlagNatsAddress, "127.0.0.1:4222", "NATS address")
-	rootCmd.PersistentFlags().String(config.FlagNatsEncoding, "json", "NATS encoding")
 	rootCmd.PersistentFlags().String(config.FlagEnvironment, "development", "environment")
 	rootCmd.PersistentFlags().String(config.FlagLogLevel, "info", "log level (default is info)")
 	rootCmd.PersistentFlags().String(config.FlagLogKind, "text", "log kind (text or json, default is text)")
 	rootCmd.PersistentFlags().String(config.FlagOidcProvider, "", "OIDC provider URL")
 	rootCmd.PersistentFlags().String(config.FlagOidcClientId, "", "OIDC client ID")
-	rootCmd.PersistentFlags().String(config.FlagCouchbaseURL, "127.0.0.1", "Couchbase host")
-	rootCmd.PersistentFlags().String(config.FlagCouchbaseBucket, "default", "Couchbase bucket")
-	rootCmd.PersistentFlags().String(config.FlagCouchbaseUsername, "", "Couchbase username")
-	rootCmd.PersistentFlags().String(config.FlagCouchbasePassword, "", "Couchbase password")
+	rootCmd.PersistentFlags().String(config.FlagDatabaseKind, "", "Database kind")
+	rootCmd.PersistentFlags().String(config.FlagDatabaseHost, "", "Database host")
+	rootCmd.PersistentFlags().String(config.FlagDatabaseName, "", "Database name")
+	rootCmd.PersistentFlags().String(config.FlagDatabaseUsername, "", "Database username")
+	rootCmd.PersistentFlags().String(config.FlagDatabasePassword, "", "Database password")
+	rootCmd.PersistentFlags().String(config.FlagBlueprintVersion, "", "Blueprint version")
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is /etc/gatewayd/config.yaml)")
 
 	envPrefix := "AVALOND"
 	bindFlags := map[string]string{
-		config.FlagEnvironment:       config.EnvEnvironment,
-		config.FlagLogLevel:          config.EnvLogLevel,
-		config.FlagLogKind:           config.EnvLogKind,
-		config.FlagGatewayHost:       config.EnvGatewayHost,
-		config.FlagGatewayPort:       config.EnvGatewayPort,
-		config.FlagNatsAddress:       config.EnvNatsAddress,
-		config.FlagNatsEncoding:      config.EnvNatsEncoding,
-		config.FlagOidcProvider:      config.EnvOidcProvider,
-		config.FlagOidcClientId:      config.EnvOidcClientId,
-		config.FlagCouchbaseURL:      config.EnvCouchbaseURL,
-		config.FlagCouchbaseBucket:   config.EnvCouchbaseBucket,
-		config.FlagCouchbaseUsername: config.EnvCouchbaseUsername,
-		config.FlagCouchbasePassword: config.EnvCouchbasePassword,
+		config.FlagEnvironment:      config.EnvEnvironment,
+		config.FlagLogLevel:         config.EnvLogLevel,
+		config.FlagLogKind:          config.EnvLogKind,
+		config.FlagGatewayHost:      config.EnvGatewayHost,
+		config.FlagGatewayPort:      config.EnvGatewayPort,
+		config.FlagNatsAddress:      config.EnvNatsAddress,
+		config.FlagOidcProvider:     config.EnvOidcProvider,
+		config.FlagOidcClientId:     config.EnvOidcClientId,
+		config.FlagDatabaseKind:     config.EnvDatabaseKind,
+		config.FlagDatabaseHost:     config.EnvDatabaseHost,
+		config.FlagDatabaseUsername: config.EnvDatabaseUsername,
+		config.FlagDatabasePassword: config.EnvDatabasePassword,
+		config.FlagDatabaseName:     config.EnvDatabaseName,
+		config.FlagBlueprintVersion: config.EnvBlueprintVersion,
 	}
 
 	for flag, env := range bindFlags {
@@ -170,22 +174,15 @@ func initMessageBus() (*transport.Connection, error) {
 		natsAddress = defaultNatsAddress
 	}
 
-	natsEncoder := viper.GetString(config.FlagNatsEncoding)
-	if natsEncoder == "" {
-		natsEncoder = defaultNatsEncoder
-	}
-
-	encoder := transport.ParseEncoder(natsEncoder)
 	config := transport.DefaultConfig
 	config.URL = natsAddress
-	config.Encoder = encoder
 
-	bus, err := transport.NewEncodedConn(config)
+	bus, err := transport.NewConn(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to NATS: %w", err)
 	}
 
-	slog.Info("established connection to NATS", "address", natsAddress, "encoding", natsEncoder)
+	slog.Info("established connection to NATS", "address", natsAddress)
 
 	return bus, nil
 }

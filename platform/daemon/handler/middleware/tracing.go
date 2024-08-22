@@ -10,6 +10,10 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 )
 
+const (
+	tracerName = "daemon"
+)
+
 func Tracing(skipPaths ...[]string) func(next http.Handler) http.Handler {
 	skip := make(map[string]struct{}, 0)
 
@@ -20,7 +24,6 @@ func Tracing(skipPaths ...[]string) func(next http.Handler) http.Handler {
 	}
 
 	otel.SetTextMapPropagator(propagation.TraceContext{})
-	otel.Tracer("test")
 
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
@@ -31,7 +34,7 @@ func Tracing(skipPaths ...[]string) func(next http.Handler) http.Handler {
 				}
 
 				rw := NewResponseWriter(w)
-				ctx, span := otel.Tracer("test").Start(r.Context(), "test-span")
+				ctx, span := otel.Tracer(tracerName).Start(r.Context(), "request")
 				traceID := span.SpanContext().TraceID().String()
 				spanID := span.SpanContext().SpanID().String()
 

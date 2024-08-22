@@ -1,19 +1,22 @@
 package handler
 
 import (
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
 
 	"github.com/GnarloqGames/genesis-avalon-gateway/platform/auth"
+	"github.com/GnarloqGames/genesis-avalon-gateway/platform/auth/claims"
+	"github.com/GnarloqGames/genesis-avalon-gateway/platform/auth/provider"
 	"github.com/GnarloqGames/genesis-avalon-gateway/platform/daemon/handler/middleware"
-	"github.com/GnarloqGames/genesis-avalon-kit/database/couchbase"
+	"github.com/GnarloqGames/genesis-avalon-kit/database"
 	"github.com/GnarloqGames/genesis-avalon-kit/proto"
 	"github.com/GnarloqGames/genesis-avalon-kit/transport"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
+	"github.com/go-chi/render"
+	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/metric"
@@ -22,7 +25,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func Handler(bus *transport.Connection) http.Handler {
+func Handler(bus *transport.Connection, verifier provider.TokenVerifier) http.Handler {
 	meters, err := newMeters()
 	if err != nil {
 		slog.Error("failed to create meters", "error", err)
@@ -47,10 +50,21 @@ func Handler(bus *transport.Connection) http.Handler {
 	r.Handle("/metrics", promhttp.Handler())
 
 	r.Group(func(rr chi.Router) {
-		rr.Use(auth.Middleware())
+		rr.Use(auth.Middleware(verifier))
 		rr.Post("/build", Build(bus))
 		rr.Get("/buildings", ListBuildings())
 	})
+
+	r.Group(func(rr chi.Router) {
+		rr.Use(auth.Middleware(verifier))
+
+		rr.Post("/registry/reload/{version}", ReloadBlueprints())
+	})
+
+	r.Post("/registry/blueprint", AddBlueprint())
+	r.Post("/registry/blueprints", AddBlueprintBatch())
+	r.Get("/registry/blueprint/{version}/{kind}/{slug}", GetBlueprint())
+	r.Get("/registry/blueprint/{version}", GetBlueprints())
 
 	return r
 }
@@ -58,7 +72,7 @@ func Handler(bus *transport.Connection) http.Handler {
 func Build(bus *transport.Connection) http.HandlerFunc {
 	logger := slog.Default().With("context", "Build")
 	fn := func(w http.ResponseWriter, r *http.Request) {
-		claims, ok := r.Context().Value(auth.ClaimsContext).(*auth.Claims)
+		claims, ok := r.Context().Value(auth.ClaimsContext).(*claims.Claims)
 		if !ok || claims == nil {
 			logger.Error("failed to read claims from context")
 			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
@@ -66,8 +80,8 @@ func Build(bus *transport.Connection) http.HandlerFunc {
 			return
 		}
 
-		if !claims.HasRole("dev.avalon.cool:can-build") {
-			logger.Error("user doesn't have correct permissions", "role", "dev.avalon.cool:can-build", "user_id", claims.Subject)
+		if !claims.HasRole("dev.avalon.cool:inventory:write") {
+			logger.Error("user doesn't have correct permissions", "role", "dev.avalon.cool:inventory:write", "user_id", claims.Subject)
 			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 
 			return
@@ -94,8 +108,10 @@ func Build(bus *transport.Connection) http.HandlerFunc {
 		}
 
 		var res proto.BuildResponse
-		if err := bus.Request("build", req, &res, 10*time.Second); err != nil {
-			logger.Error("failed to send request to message bus", "error", err)
+
+		_, err = transport.Request(bus, "build", req, &res, 10*time.Second)
+		if err != nil {
+			logger.Error("build request failed", "error", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 
 			return
@@ -108,7 +124,7 @@ func Build(bus *transport.Connection) http.HandlerFunc {
 			return
 		}
 
-		w.Write([]byte("OK")) //nolint:errcheck
+		render.JSON(w, r, map[string]string{"status": "OK"})
 	}
 
 	return http.HandlerFunc(fn)
@@ -119,10 +135,10 @@ func ListBuildings() http.HandlerFunc {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		ctx := otel.GetTextMapPropagator().Extract(r.Context(), propagation.HeaderCarrier(r.Header))
 
-		_, span := otel.Tracer("test").Start(ctx, "ListBuildings")
+		ctx, span := otel.Tracer("test").Start(ctx, "ListBuildings")
 		defer span.End()
 
-		claims, ok := r.Context().Value(auth.ClaimsContext).(*auth.Claims)
+		claims, ok := r.Context().Value(auth.ClaimsContext).(*claims.Claims)
 		if !ok || claims == nil {
 			logger.Error("failed to read claims from context")
 			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
@@ -130,7 +146,7 @@ func ListBuildings() http.HandlerFunc {
 			return
 		}
 
-		db, err := couchbase.Get()
+		db, err := database.Get()
 		if err != nil {
 			logger.Error("failed to get database connection", "error", err)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -138,7 +154,15 @@ func ListBuildings() http.HandlerFunc {
 			return
 		}
 
-		buildings, err := db.GetBuildings(claims.Subject)
+		id, err := uuid.Parse(claims.Subject)
+		if err != nil {
+			logger.Error("failed to parse owner ID", "error", err)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+
+			return
+		}
+
+		buildings, err := db.GetBuildings(ctx, id)
 		if err != nil {
 			logger.Error("failed to fetch buildings", "error", err)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -151,13 +175,7 @@ func ListBuildings() http.HandlerFunc {
 			"buildings": buildings,
 		}
 
-		encoder := json.NewEncoder(w)
-		if err := encoder.Encode(response); err != nil {
-			logger.Error("failed to encode response", "error", err)
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-
-			return
-		}
+		render.JSON(w, r, response)
 	}
 
 	return http.HandlerFunc(fn)

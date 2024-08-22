@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/GnarloqGames/genesis-avalon-gateway/config"
+	"github.com/GnarloqGames/genesis-avalon-gateway/platform/auth/provider"
 	"github.com/GnarloqGames/genesis-avalon-gateway/platform/daemon/handler"
 	"github.com/GnarloqGames/genesis-avalon-kit/transport"
 	"github.com/spf13/viper"
@@ -19,7 +20,7 @@ type Server struct {
 	bus *transport.Connection
 }
 
-func Start(bus *transport.Connection) *Server {
+func Start(bus *transport.Connection, verifier provider.TokenVerifier) *Server {
 	host := viper.GetString(config.FlagGatewayHost)
 	port := viper.GetUint16(config.FlagGatewayPort)
 
@@ -27,7 +28,7 @@ func Start(bus *transport.Connection) *Server {
 		Addr:         fmt.Sprintf("%s:%d", host, port),
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
-		Handler:      handler.Handler(bus),
+		Handler:      handler.Handler(bus, verifier),
 	}
 
 	go func() {

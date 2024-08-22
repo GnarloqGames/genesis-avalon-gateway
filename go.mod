@@ -2,7 +2,7 @@ module github.com/GnarloqGames/genesis-avalon-gateway
 
 go 1.21.0
 
-// replace github.com/GnarloqGames/genesis-avalon-kit v0.7.1-pre.0 => ../genesis-avalon-kit
+replace github.com/GnarloqGames/genesis-avalon-kit v0.7.1-pre.0 => ../genesis-avalon-kit
 
 require (
 	github.com/GnarloqGames/genesis-avalon-kit v0.7.1-pre.1
